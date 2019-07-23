@@ -1,12 +1,12 @@
 import { stat } from "fs"
 
-export const readFileModificationDate = (path) =>
+export const readStats = (path) =>
   new Promise((resolve, reject) => {
-    stat(path, (error, stat) => {
+    stat(path, (error, stats) => {
       if (error) {
         reject(error)
       } else {
-        resolve(stat.mtime)
+        resolve(stats)
       }
     })
   })
