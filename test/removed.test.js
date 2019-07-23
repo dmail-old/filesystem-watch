@@ -1,16 +1,24 @@
 import { assert } from "@dmail/assert"
 import { registerFileRemovedCallback } from "../index.js"
-import { cleanFixturesFolder, resolveFixturePath, createFile, removeFile } from "./testHelpers.js"
+import {
+  cleanFixturesFolder,
+  resolveFixturePath,
+  createFile,
+  removeFile,
+  wait,
+} from "./testHelpers.js"
 
 await cleanFixturesFolder()
 const fooPath = resolveFixturePath(`/foo.js`)
 await createFile(fooPath)
 
-let actual
-registerFileRemovedCallback(fooPath, (arg) => {
-  actual = arg
+const callArray = []
+registerFileRemovedCallback(fooPath, (...args) => {
+  callArray.push(...args)
 })
 await removeFile(fooPath)
+await wait(200)
 
-const expected = {} // TODO
+const actual = callArray
+const expected = {}
 assert({ actual, expected })

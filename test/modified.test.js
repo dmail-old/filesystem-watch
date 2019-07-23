@@ -5,19 +5,22 @@ import {
   resolveFixturePath,
   createFile,
   changeFileModificationDate,
+  dateToSecondsPrecision,
+  wait,
 } from "./testHelpers.js"
 
 await cleanFixturesFolder()
 const fooPath = resolveFixturePath(`/foo.js`)
 await createFile(fooPath)
 
-let actual
-registerFileModifiedCallback(fooPath, (arg) => {
-  actual = arg
+const callArray = []
+registerFileModifiedCallback(fooPath, (...args) => {
+  callArray.push(...args)
 })
-const modificationDate = new Date()
+const modificationDate = dateToSecondsPrecision(new Date(Date.now() + 1000))
 await changeFileModificationDate(fooPath, modificationDate)
+await wait(200)
 
-const expected = {} // TODO
-debugger
+const actual = callArray
+const expected = [{ modificationDate }]
 assert({ actual, expected })

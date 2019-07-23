@@ -1,6 +1,6 @@
 // https://nodejs.org/docs/latest-v9.x/api/fs.html#fs_fs_utimes_path_atime_mtime_callback
 import { utimes, rename, unlink } from "fs"
-import { fileWrite } from "@dmail/helper"
+import { fileWrite, fileMakeDirname } from "@dmail/helper"
 import { pathnameToDirname, hrefToPathname } from "@jsenv/module-resolution"
 import { pathnameToOperatingSystemPath } from "@jsenv/operating-system-path"
 
@@ -28,8 +28,9 @@ export const changeFileModificationDate = (path, date) =>
     })
   })
 
-export const moveFile = (path, destinationPath) =>
-  new Promise((resolve, reject) => {
+export const moveFile = async (path, destinationPath) => {
+  await fileMakeDirname(destinationPath)
+  return new Promise((resolve, reject) => {
     rename(path, destinationPath, (error) => {
       if (error) {
         reject(error)
@@ -38,6 +39,7 @@ export const moveFile = (path, destinationPath) =>
       }
     })
   })
+}
 
 export const removeFile = (path) =>
   new Promise((resolve, reject) => {
@@ -59,3 +61,14 @@ export const cleanFixturesFolder = () =>
       else resolve()
     }),
   )
+
+export const wait = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+
+export const dateToSecondsPrecision = (date) => {
+  const dateWithSecondsPrecision = new Date(date)
+  dateWithSecondsPrecision.setMilliseconds(0)
+  return dateWithSecondsPrecision
+}

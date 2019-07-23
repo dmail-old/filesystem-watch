@@ -10,7 +10,7 @@ import {
 
 await cleanFixturesFolder()
 const fooPath = resolveFixturePath(`/foo.js`)
-const fooDestinationPath = resolveFixturePath(`/foo-2.js`)
+const fooDestinationPath = resolveFixturePath(`/folder/foo-2.js`)
 await createFile(fooPath)
 
 const callArray = []
@@ -21,5 +21,5 @@ await moveFile(fooPath, fooDestinationPath)
 await wait(200)
 
 const actual = callArray
-const expected = [{ newPath: fooDestinationPath }]
+const expected = []
 assert({ actual, expected })
