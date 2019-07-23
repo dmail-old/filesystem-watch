@@ -22,13 +22,25 @@ export const registerFileLifecycle = (
   let lastKnownModificationDate
   const initialModificationDatePromise = readFileModificationDate(path)
 
-  // eslint-disable-next-line consistent-return
   watcher.on("change", (eventType, filename) => {
-    if (eventType === "change") return handleChangeEvent()
-    if (eventType === "rename") return handleRenameEvent(filename)
+    if (eventType === "change") {
+      handleModified()
+    } else if (eventType === "rename") {
+      handleRenameEvent(filename)
+    }
   })
 
-  const handleChangeEvent = async () => {
+  const handleRenameEvent = async (filename) => {
+    if (!movedCallback && !removedCallback) return
+
+    if (!filename || filename === basename(path)) {
+      handleRemoved(filename)
+    } else {
+      handleMoved(filename)
+    }
+  }
+
+  const handleModified = async () => {
     if (!modifiedCallback) return
 
     const [previousModificationDate, modificationDate] = await Promise.all([
@@ -44,15 +56,9 @@ export const registerFileLifecycle = (
     modifiedCallback({ modificationDate })
   }
 
-  const handleRenameEvent = async (filename) => {
-    if (!filename || filename === basename(path)) {
-      handleRemoveEvent(filename)
-    } else {
-      handleMoveEvent(filename)
-    }
-  }
+  const handleRemoved = async () => {
+    if (!removedCallback) return
 
-  const handleRemoveEvent = async () => {
     try {
       await readStats(path)
     } catch (error) {
@@ -61,7 +67,9 @@ export const registerFileLifecycle = (
     }
   }
 
-  const handleMoveEvent = async (newBasename) => {
+  const handleMoved = async (newBasename) => {
+    if (!movedCallback) return
+
     // on macos newBasename can be `foo.js` even if the file
     // is actually moved to `folder/foo.js`
     // we check if `foo.js` file exists
@@ -82,7 +90,7 @@ export const registerFileLifecycle = (
 
     if (exists) {
       movedCallback({ newPath })
-    } else {
+    } else if (removedCallback) {
       removedCallback()
     }
   }
