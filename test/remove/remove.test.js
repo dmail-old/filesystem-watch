@@ -17,6 +17,8 @@ registerFileLifecycle(fooPath, {
 await removeFile(fooPath)
 await wait(200)
 
+// on linux I am notified twice of the removal
+// it sucks and should be fixed
 const actual = mutations
 const expected = [{ type: "removed" }]
 assert({ actual, expected })

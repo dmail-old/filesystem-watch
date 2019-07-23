@@ -22,13 +22,15 @@ export const registerFileLifecycle = (
   let lastKnownModificationDate
   const initialModificationDatePromise = readFileModificationDate(path)
 
-  watcher.on("change", (eventType, filename) => {
+  const onChange = (eventType, filename) => {
     if (eventType === "change") {
       handleModified()
     } else if (eventType === "rename") {
       handleRenameEvent(filename)
     }
-  })
+  }
+
+  watcher.on("change", onChange)
 
   const handleRenameEvent = async (filename) => {
     if (!movedCallback && !removedCallback) return
@@ -59,12 +61,16 @@ export const registerFileLifecycle = (
   const handleRemoved = async () => {
     if (!removedCallback) return
 
-    try {
-      await readStats(path)
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error
-      removedCallback()
-    }
+    // ensure once the file is considered as removed, watcher is closed
+    watcher.close()
+    removedCallback()
+    // try {
+    //   await readStats(path)
+    //   watcher.on("change", onChange)
+    // } catch (error) {
+    //   if (error.code !== "ENOENT") throw error
+
+    // }
   }
 
   const handleMoved = async (newBasename) => {

@@ -21,6 +21,8 @@ registerFileLifecycle(fooPath, {
 await moveFile(fooPath, fooDestinationPath)
 await wait(200)
 
+// does not work on linux
+// move is not reliable, maybe it works only on mac
 const actual = mutations
 const expected = [{ type: "moved", newPath: fooDestinationPath }]
 assert({ actual, expected })

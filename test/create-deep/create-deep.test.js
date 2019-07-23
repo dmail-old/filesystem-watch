@@ -15,5 +15,7 @@ await createFile(fooPath)
 await wait(200)
 
 const actual = callArray
+// does not work on linux because recursive is not supported
+// https://nodejs.org/docs/latest/api/fs.html#fs_caveats
 const expected = [{ relativePath: `/folder/foo.js` }]
 assert({ actual, expected })
