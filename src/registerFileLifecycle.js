@@ -6,6 +6,11 @@ import { readStats } from "./readStats.js"
 export const registerFileLifecycle = (
   path,
   {
+    // it would be cool to support addedCallback here
+    // but I have no use case for now and it would be complex to do because
+    // we could have to catch ENOENT on watcher
+    // and fallback to watching parent directory for file creation
+    // and reinstall a watcher on removal
     // addedCallback,
     modifiedCallback,
     movedCallback,

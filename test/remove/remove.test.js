@@ -18,5 +18,5 @@ await removeFile(fooPath)
 await wait(200)
 
 const actual = mutations
-const expected = [{ type: "removed " }]
+const expected = [{ type: "removed" }]
 assert({ actual, expected })
