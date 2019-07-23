@@ -1,10 +1,13 @@
-import { watchFile } from "./watchFile.js"
+import { watch } from "fs"
 import { readFileModificationDate } from "./readFileModificationDate.js"
 
 export const registerFileModifiedCallback = (path, callback) => {
+  const watcher = watch(path, { persistent: false })
+
   let lastKnownModificationDate
   const initialModificationDatePromise = readFileModificationDate(path)
-  return watchFile(path, async (eventType) => {
+
+  watcher.on("change", async (eventType) => {
     if (eventType !== "change") return
 
     const [previousModificationDate, modificationDate] = await Promise.all([
@@ -19,4 +22,8 @@ export const registerFileModifiedCallback = (path, callback) => {
 
     callback({ modificationDate })
   })
+
+  return () => {
+    watcher.close()
+  }
 }

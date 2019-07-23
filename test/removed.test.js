@@ -12,13 +12,13 @@ await cleanFixturesFolder()
 const fooPath = resolveFixturePath(`/foo.js`)
 await createFile(fooPath)
 
-const callArray = []
-registerFileRemovedCallback(fooPath, (...args) => {
-  callArray.push(...args)
+let callCount = 0
+registerFileRemovedCallback(fooPath, () => {
+  callCount++
 })
 await removeFile(fooPath)
 await wait(200)
 
-const actual = callArray
-const expected = {}
+const actual = callCount
+const expected = 1
 assert({ actual, expected })

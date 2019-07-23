@@ -1,9 +1,11 @@
+import { watch } from "fs"
 import { dirname, sep } from "path"
-import { watchFile } from "./watchFile.js"
 import { operatingSystemPathLeadsToActualFile } from "./operatingSystemPathLeadsToActualFile.js"
 
 export const registerFileMovedCallback = (path, callback) => {
-  return watchFile(path, async (eventType, newBasename) => {
+  const watcher = watch(path, { persistent: false })
+
+  watcher.on("change", async (eventType, newBasename) => {
     if (eventType !== "rename") return
 
     // on macOS you receive newBasename 'foo-2.js'
@@ -14,4 +16,8 @@ export const registerFileMovedCallback = (path, callback) => {
 
     callback({ newPath })
   })
+
+  return () => {
+    watcher.close()
+  }
 }
