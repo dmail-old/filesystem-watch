@@ -6,4 +6,4 @@ dist
 /importMap.json
 /env.json
 
-/test/fixtures/
+/test/**/fixtures/
