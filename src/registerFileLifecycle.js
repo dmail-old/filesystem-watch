@@ -90,11 +90,15 @@ const watchFileMutation = (path, { update, remove }) => {
 
   watcher.on("change", (eventType) => {
     if (eventType === "change") {
-      update()
+      if (update) {
+        update()
+      }
     } else if (eventType === "rename") {
       watcher.close()
       watcher = undefined
-      remove()
+      if (remove) {
+        remove()
+      }
     }
   })
 
