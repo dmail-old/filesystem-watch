@@ -19,8 +19,9 @@ registerFileLifecycle(fooPath, {
   removed: () => {
     mutations.push({ type: "removed" })
   },
+  callAddedWhenFileAlreadyExists: true,
 })
 
 const actual = mutations
-const expected = []
+const expected = [{ type: "added" }]
 assert({ actual, expected })

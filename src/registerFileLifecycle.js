@@ -1,12 +1,13 @@
-import { dirname, basename } from "path"
-import { watch, statSync, open, close } from "fs"
-import { promisify } from "util"
-import { operatingSystemIsWindows } from "./operatingSystemTypes.js"
+import { watch, statSync } from "fs"
+import { watchFileCreation } from "./folder-watching.js"
 import { readFileModificationDate } from "./readFileModificationDate.js"
 import { statsToType } from "./statsToType.js"
 import { trackRessources } from "./trackRessources.js"
 
-export const registerFileLifecycle = (path, { added, updated, removed }) => {
+export const registerFileLifecycle = (
+  path,
+  { added, updated, removed, callAddedWhenFileAlreadyExists = false },
+) => {
   if (added && typeof added !== "function") {
     throw new TypeError(`added must be a function, got ${added}`)
   }
@@ -19,30 +20,19 @@ export const registerFileLifecycle = (path, { added, updated, removed }) => {
 
   const tracker = trackRessources()
 
-  let registered = true
-  tracker.registerCleanupCallback(() => {
-    registered = false
-  })
-
-  const fileExistsCallback = () => {
+  const fileExistsCallback = ({ alreadyExists }) => {
     let updateCallback
     if (updated) {
-      let lastKnownModificationDate
-      const initialModificationDatePromise = readFileModificationDate(path)
+      let lastKnownModificationDate = readFileModificationDate(path)
 
-      updateCallback = async () => {
-        const [previousModificationDate, modificationDate] = await Promise.all([
-          lastKnownModificationDate || initialModificationDatePromise,
-          readFileModificationDate(path),
-        ])
+      updateCallback = () => {
+        const previousModificationDate = lastKnownModificationDate
+        const modificationDate = readFileModificationDate(path)
         lastKnownModificationDate = modificationDate
         // be sure we are not wrongly notified
         // I don't remember how it can happen
         // but it happens
         if (Number(previousModificationDate) === Number(modificationDate)) return
-
-        // in case we are not interested anymore, don't call updated
-        if (!registered) return
 
         updated({ modificationDate })
       }
@@ -61,14 +51,18 @@ export const registerFileLifecycle = (path, { added, updated, removed }) => {
       },
     })
     const fileMutationStopTracking = tracker.registerCleanupCallback(fileMutationStopWatching)
-    if (added) added()
+
+    if (added) {
+      if (alreadyExists && !callAddedWhenFileAlreadyExists) return
+      added()
+    }
   }
 
   try {
     const stats = statSync(path)
     const type = statsToType(stats)
     if (type === "file") {
-      fileExistsCallback()
+      fileExistsCallback({ alreadyExists: true })
     } else {
       throw new Error(createUnexpectedStatsTypeMessage({ type, path }))
     }
@@ -77,7 +71,7 @@ export const registerFileLifecycle = (path, { added, updated, removed }) => {
       if (added) {
         const fileCreationStopWatching = watchFileCreation(path, () => {
           fileCreationgStopTracking()
-          fileExistsCallback()
+          fileExistsCallback({ alreadyExists: false })
         })
         const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
       } else {
@@ -107,54 +101,6 @@ const watchFileMutation = (path, { update, remove }) => {
   return () => {
     if (watcher) {
       watcher.close()
-    }
-  }
-}
-
-const openAsync = promisify(open)
-const closeAsync = promisify(close)
-
-const watchFileCreation = (path, callback) => {
-  const parentPath = dirname(path)
-  let parentWatcher = watch(parentPath, { persistent: false })
-  parentWatcher.on("change", (eventType, filename) => {
-    if (eventType !== "rename") return
-
-    if (filename !== basename(path)) return
-
-    try {
-      const stats = statSync(path)
-      const type = statsToType(stats)
-      // ignore if something else with that name gets created
-      // we are only interested into files
-      if (type !== "file") return
-    } catch (error) {
-      if (error.code === "ENOENT") return
-      if (error.code === "EPERM") return
-      throw error
-    }
-
-    parentWatcher.close()
-    parentWatcher = undefined
-    callback()
-  })
-
-  if (operatingSystemIsWindows) {
-    parentWatcher.on("error", async (error) => {
-      // https://github.com/joyent/node/issues/4337
-      if (error.code === "EPERM") {
-        try {
-          const fd = await openAsync(parentPath, "r")
-          await closeAsync(fd)
-        } catch (error) {}
-      }
-      throw error
-    })
-  }
-
-  return () => {
-    if (parentWatcher) {
-      parentWatcher.close()
     }
   }
 }

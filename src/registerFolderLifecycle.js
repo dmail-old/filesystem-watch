@@ -1,79 +1,72 @@
-import { watch } from "fs"
 import { sep } from "path"
+import { statSync, readdirSync } from "fs"
 import { pathnameToRelativePathname } from "@jsenv/operating-system-path"
-import { readFolder } from "./readFolder.js"
-import { readStats } from "./readStats.js"
+import { operatingSystemIsLinux } from "./operatingSystemTypes.js"
+import { createWatcher } from "./createWatcher.js"
+import { trackRessources } from "./trackRessources.js"
+import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
 export const registerFolderLifecycle = async (path, { added }) => {
+  const tracker = trackRessources()
+
   const onChange = async (eventType, filename) => {
+    if (!filename) return
     if (eventType !== "rename") return
 
     const entryPath = `${path}${sep}${filename}`
-    try {
-      const stats = await readStats(entryPath)
-      if (stats.isFile()) {
-        const relativePath = `/${filename.replace(/\\/g, "/")}`
-        callback({ relativePath })
-      }
-    } catch (e) {
-      if (e.code === "ENOENT") return
-      throw e
-    }
+    const type = filesystemPathToTypeOrNull(entryPath)
+    if (type === null) return
+
+    const relativePath = `/${filename.replace(/\\/g, "/")}`
+    added({ relativePath, type })
   }
 
   // linux does not support recursive option
-  if (process.platform === "linux") {
-    const watcherArray = []
-
-    const watchDirectory = async (directoryPath, callback) => {
-      const watcher = watch(directoryPath, { persistent: false })
+  if (operatingSystemIsLinux()) {
+    const watchDirectory = async (directoryPath, nested = false) => {
+      const isRootDirectory = directoryPath === path
+      const watcher = createWatcher(directoryPath, { persistent: false })
 
       watcher.on("change", async (eventType, filename) => {
+        if (!filename) return
         if (eventType !== "rename") return
 
         const entryPath = `${directoryPath}/${filename}`
-        const stats = await readStats(entryPath)
+        const stats = statSync(entryPath)
         if (stats.isDirectory()) {
-          watchDirectory(entryPath)
+          watchDirectory(entryPath, true)
         } else {
           onChange("rename", computeFilename(filename))
         }
       })
 
-      watcherArray.push(watcher)
+      tracker.registerCleanupCallback(() => {
+        watcher.close()
+      })
 
       const computeFilename = (filename) => {
-        if (directoryPath === path) return filename
+        if (isRootDirectory) return filename
         return `${pathnameToRelativePathname(directoryPath, path).slice(1)}/${filename}`
       }
 
-      const visitEntries = async () => {
-        const entryArray = await readFolder(directoryPath)
-        await Promise.all(
-          entryArray.map(async (entry) => {
-            const entryPath = `${directoryPath}/${entry}`
-            const stats = await readStats(entryPath)
-            if (stats.isDirectory()) {
-              watchDirectory(entryPath, callback)
-            } else if (stats.isFile()) {
-              onChange("rename", computeFilename(entry))
-            }
-          }),
-        )
-      }
-      visitEntries()
-
-      return () => {
-        watcherArray.forEach((watcher) => watcher.close())
-      }
+      readdirSync(directoryPath).forEach((entry) => {
+        const entryPath = `${directoryPath}/${entry}`
+        const stats = statSync(entryPath)
+        if (stats.isDirectory()) {
+          watchDirectory(entryPath)
+        } else if (!nested) {
+          onChange("rename", computeFilename(entry))
+        }
+      })
     }
 
-    return watchDirectory(path)
+    watchDirectory(path)
+  } else {
+    const watcher = createWatcher(path, { recursive: true, persistent: false })
+    tracker.registerCleanupCallback(() => {
+      watcher.close()
+    })
   }
 
-  const watcher = watch(path, { recursive: true, persistent: false })
-  watcher.on("change", onChange)
-  return () => {
-    watcher.close()
-  }
+  return tracker.cleanup
 }
