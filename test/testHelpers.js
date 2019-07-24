@@ -1,5 +1,5 @@
 // https://nodejs.org/docs/latest-v9.x/api/fs.html#fs_fs_utimes_path_atime_mtime_callback
-import { utimes, rename, unlink } from "fs"
+import { utimes, rename, unlink, mkdir } from "fs"
 import { fileWrite, fileMakeDirname } from "@dmail/helper"
 
 const rimraf = import.meta.require("rimraf")
@@ -41,7 +41,23 @@ export const removeFile = (path) =>
 
 export const createFile = (path) => fileWrite(path, "")
 
-export const removeFolder = (path) =>
+export const cleanFolder = async (path) => {
+  await removeFolder(path)
+  await createFolder(path)
+}
+
+const createFolder = (path) =>
+  new Promise((resolve, reject) => {
+    mkdir(path, (error) => {
+      if (error) {
+        reject(error)
+      } else {
+        resolve()
+      }
+    })
+  })
+
+const removeFolder = (path) =>
   new Promise((resolve, reject) =>
     rimraf(path, (error) => {
       if (error) reject(error)

@@ -1,107 +1,146 @@
 import { dirname, basename, sep } from "path"
-import { watch } from "fs"
+import { watch, statSync } from "fs"
 import { readFileModificationDate } from "./readFileModificationDate.js"
-import { readStats } from "./readStats.js"
+import { statsToType } from "./statsToType.js"
+import { trackRessources } from "./trackRessources.js"
 
-export const registerFileLifecycle = (
-  path,
-  {
-    // it would be cool to support addedCallback here
-    // but I have no use case for now and it would be complex to do because
-    // we could have to catch ENOENT on watcher
-    // and fallback to watching parent directory for file creation
-    // and reinstall a watcher on removal
-    // addedCallback,
-    modifiedCallback,
-    movedCallback,
-    removedCallback,
-  },
-) => {
-  const watcher = watch(path, { persistent: false })
-
-  let lastKnownModificationDate
-  const initialModificationDatePromise = readFileModificationDate(path)
-
-  const onChange = (eventType, filename) => {
-    if (eventType === "change") {
-      handleModified()
-    } else if (eventType === "rename") {
-      handleRenameEvent(filename)
-    }
+export const registerFileLifecycle = (path, { added, updated, removed }) => {
+  if (added && typeof added !== "function") {
+    throw new TypeError(`added must be a function, got ${added}`)
+  }
+  if (updated && typeof updated !== "function") {
+    throw new TypeError(`updated must be a function, got ${updated}`)
+  }
+  if (removed && typeof removed !== "function") {
+    throw new TypeError(`removed must be a function, got ${removed}`)
   }
 
-  watcher.on("change", onChange)
+  const tracker = trackRessources()
 
-  const handleRenameEvent = async (filename) => {
-    if (!movedCallback && !removedCallback) return
+  let registered = true
+  tracker.registerCleanupCallback(() => {
+    registered = false
+  })
 
-    if (!filename || filename === basename(path)) {
-      handleRemoved(filename)
+  const fileExistsCallback = () => {
+    let updateCallback
+    if (updated) {
+      let lastKnownModificationDate
+      const initialModificationDatePromise = readFileModificationDate(path)
+
+      updateCallback = async () => {
+        const [previousModificationDate, modificationDate] = await Promise.all([
+          lastKnownModificationDate || initialModificationDatePromise,
+          readFileModificationDate(path),
+        ])
+        lastKnownModificationDate = modificationDate
+        // be sure we are not wrongly notified
+        // I don't remember how it can happen
+        // but it happens
+        if (Number(previousModificationDate) === Number(modificationDate)) return
+
+        // in case we are not interested anymore, don't call updated
+        if (!registered) return
+
+        updated({ modificationDate })
+      }
+    }
+
+    let removeCallback
+    if (removed) {
+      removeCallback = removed
+    }
+
+    const fileMutationStopWatching = watchFileMutation(path, {
+      update: updateCallback,
+      remove: () => {
+        fileMutationStopTracking()
+        if (removeCallback) removeCallback()
+      },
+    })
+    const fileMutationStopTracking = tracker.registerCleanupCallback(fileMutationStopWatching)
+    added()
+  }
+
+  try {
+    const stats = statSync(path)
+    const type = statsToType(stats)
+    if (type === "file") {
+      fileExistsCallback()
     } else {
-      handleMoved(filename)
+      throw new Error(createUnexpectedStatsTypeMessage({ type, path }))
+    }
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      if (added) {
+        const fileCreationStopWatching = watchFileCreation(path, () => {
+          fileCreationgStopTracking()
+          fileExistsCallback()
+        })
+        const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
+      } else {
+        throw createMissingFileMessage({ path })
+      }
+    } else {
+      throw error
     }
   }
 
-  const handleModified = async () => {
-    if (!modifiedCallback) return
+  return tracker.cleanup
+}
 
-    const [previousModificationDate, modificationDate] = await Promise.all([
-      lastKnownModificationDate || initialModificationDatePromise,
-      readFileModificationDate(path),
-    ])
-    lastKnownModificationDate = modificationDate
-    // be sure we are not wrongly notified
-    // I don't remember how it can happen
-    // but it happens
-    if (Number(previousModificationDate) === Number(modificationDate)) return
+const watchFileMutation = (path, { update, remove }) => {
+  let watcher = watch(path, { persistent: false })
 
-    modifiedCallback({ modificationDate })
-  }
-
-  const handleRemoved = async () => {
-    if (!removedCallback) return
-
-    // ensure once the file is considered as removed, watcher is closed
-    watcher.close()
-    removedCallback()
-    // try {
-    //   await readStats(path)
-    //   watcher.on("change", onChange)
-    // } catch (error) {
-    //   if (error.code !== "ENOENT") throw error
-
-    // }
-  }
-
-  const handleMoved = async (newBasename) => {
-    if (!movedCallback) return
-
-    // on macos newBasename can be `foo.js` even if the file
-    // is actually moved to `folder/foo.js`
-    // we check if `foo.js` file exists
-    // so that we support case where file are moved inside a directory.
-    // it works because rename event would only be fired in case
-    // a file is removed so the file would not exists in that case
-
-    const newPath = `${dirname(path)}${sep}${newBasename}`
-
-    let exists
-    try {
-      await readStats(newPath)
-      exists = true
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error
-      exists = false
+  watcher.on("change", (eventType) => {
+    if (eventType === "change") {
+      update()
+    } else if (eventType === "rename") {
+      watcher.close()
+      watcher = undefined
+      remove()
     }
-
-    if (exists) {
-      movedCallback({ newPath })
-    } else if (removedCallback) {
-      removedCallback()
-    }
-  }
+  })
 
   return () => {
-    watcher.close()
+    if (watcher) {
+      watcher.close()
+    }
   }
 }
+
+const watchFileCreation = (path, callback) => {
+  const parentPath = dirname(path)
+  let parentWatcher = watch(parentPath, { persistent: false })
+  parentWatcher.on("change", (eventType, filename) => {
+    if (eventType !== "rename") return
+
+    if (filename !== basename(path)) return
+
+    const stats = statSync(path)
+    const type = statsToType(stats)
+
+    // ignore if something else with that name gets created
+    // we are only interested into files
+    if (type !== "file") return
+
+    parentWatcher.close()
+    parentWatcher = undefined
+    callback()
+  })
+
+  return () => {
+    if (parentWatcher) {
+      parentWatcher.close()
+    }
+  }
+}
+
+const createUnexpectedStatsTypeMessage = ({
+  type,
+  path,
+}) => `path must lead to a file, found ${type} instead.
+path: ${path}`
+
+const createMissingFileMessage = ({ path }) => `path must lead to a file, found nothing.
+path: ${path}`
