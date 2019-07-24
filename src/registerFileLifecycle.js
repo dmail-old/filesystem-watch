@@ -1,5 +1,6 @@
-import { watch, statSync } from "fs"
+import { watch, statSync, existsSync } from "fs"
 import { watchFileCreation } from "./folder-watching.js"
+import { operatingSystemIsLinux } from "./operatingSystemTypes.js"
 import { readFileModificationDate } from "./readFileModificationDate.js"
 import { statsToType } from "./statsToType.js"
 import { trackRessources } from "./trackRessources.js"
@@ -91,6 +92,7 @@ const watchFileMutation = (path, { update, remove }) => {
   watcher.on("change", (eventType) => {
     if (eventType === "change") {
       if (update) {
+        if (operatingSystemIsLinux() && !existsSync(path)) return
         update()
       }
     } else if (eventType === "rename") {
