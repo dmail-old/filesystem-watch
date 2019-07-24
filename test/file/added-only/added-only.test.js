@@ -1,22 +1,21 @@
 import { assert } from "@dmail/assert"
 import { importMetaURLToFolderPath } from "@jsenv/operating-system-path"
-import { registerFileLifecycle } from "../../index.js"
-import { cleanFolder, createFile, removeFile, wait } from "../testHelpers.js"
+import { registerFileLifecycle } from "../../../index.js"
+import { cleanFolder, createFile, wait } from "../../testHelpers.js"
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
 const fooPath = `${fixturesFolderPath}/foo.js`
 
 await cleanFolder(fixturesFolderPath)
-await createFile(fooPath)
 const mutations = []
 registerFileLifecycle(fooPath, {
-  removed: () => {
-    mutations.push({ type: "removed" })
+  added: () => {
+    mutations.push({ type: "added" })
   },
 })
-await removeFile(fooPath)
+await createFile(fooPath)
 await wait(200)
 
 const actual = mutations
-const expected = [{ type: "removed" }]
+const expected = [{ type: "added" }]
 assert({ actual, expected })

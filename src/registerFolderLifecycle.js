@@ -1,13 +1,10 @@
 import { watch } from "fs"
 import { sep } from "path"
-import { fileMakeDirname } from "@dmail/helper"
 import { pathnameToRelativePathname } from "@jsenv/operating-system-path"
 import { readFolder } from "./readFolder.js"
 import { readStats } from "./readStats.js"
 
-export const registerFileAddedCallback = async (path, callback) => {
-  await fileMakeDirname(`${path}/whatever`)
-
+export const registerFolderLifecycle = async (path, { added }) => {
   const onChange = async (eventType, filename) => {
     if (eventType !== "rename") return
 
