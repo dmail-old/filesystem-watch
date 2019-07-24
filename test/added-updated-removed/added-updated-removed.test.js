@@ -3,10 +3,11 @@ import { importMetaURLToFolderPath } from "@jsenv/operating-system-path"
 import { registerFileLifecycle } from "../../index.js"
 import {
   cleanFolder,
-  createFile,
-  changeFileModificationDate,
   dateToSecondsPrecision,
+  createFile,
   wait,
+  changeFileModificationDate,
+  removeFile,
 } from "../testHelpers.js"
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
@@ -22,11 +23,17 @@ registerFileLifecycle(fooPath, {
   updated: (data) => {
     mutations.push({ type: "updated", ...data })
   },
+  removed: () => {
+    mutations.push({ type: "removed" })
+  },
 })
 await createFile(fooPath)
+await wait(200)
 await changeFileModificationDate(fooPath, modificationDate)
+await wait(200)
+await removeFile(fooPath)
 await wait(200)
 
 const actual = mutations
-const expected = [{ type: "added" }, { type: "updated", modificationDate }]
+const expected = [{ type: "added" }, { type: "updated", modificationDate }, { type: "removed" }]
 assert({ actual, expected })

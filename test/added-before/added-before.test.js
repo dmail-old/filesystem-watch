@@ -13,8 +13,8 @@ registerFileLifecycle(fooPath, {
   added: () => {
     mutations.push({ type: "added" })
   },
-  updated: () => {
-    mutations.push({ type: "updated" })
+  updated: (data) => {
+    mutations.push({ type: "updated", ...data })
   },
   removed: () => {
     mutations.push({ type: "removed" })

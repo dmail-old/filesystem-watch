@@ -1,12 +1,12 @@
 import { assert } from "@dmail/assert"
 import { importMetaURLToFolderPath } from "@jsenv/operating-system-path"
-import { registerFileAddedCallback } from "../../index.js"
-import { removeFolder, createFile, wait } from "../testHelpers.js"
+import { registerFileAddedCallback } from "../../../index.js"
+import { cleanFolder, createFile, wait } from "../../testHelpers.js"
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
 const fooPath = `${fixturesFolderPath}/folder/foo.js`
 
-await removeFolder(fixturesFolderPath)
+await cleanFolder(fixturesFolderPath)
 const callArray = []
 registerFileAddedCallback(fixturesFolderPath, (data) => {
   callArray.push(data)

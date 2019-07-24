@@ -1,28 +1,30 @@
 import { assert } from "@dmail/assert"
 import { importMetaURLToFolderPath } from "@jsenv/operating-system-path"
 import { registerFileLifecycle } from "../../index.js"
-import { removeFolder, createFile, moveFile, wait } from "../testHelpers.js"
+import { cleanFolder, createFile, moveFile, wait } from "../testHelpers.js"
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
 const fooPath = `${fixturesFolderPath}/foo.js`
 const fooDestinationPath = `${fixturesFolderPath}/foo-2.js`
 
-await removeFolder(fixturesFolderPath)
-await createFile(fooPath)
+await cleanFolder(fixturesFolderPath)
 const mutations = []
 registerFileLifecycle(fooPath, {
-  movedCallback: (data) => {
-    mutations.push({ type: "moved", ...data })
+  added: () => {
+    mutations.push({ type: "added" })
   },
-  removedCallback: () => {
+  updated: (data) => {
+    mutations.push({ type: "updated", ...data })
+  },
+  removed: () => {
     mutations.push({ type: "removed" })
   },
 })
+await createFile(fooPath)
+await wait(200)
 await moveFile(fooPath, fooDestinationPath)
 await wait(200)
 
-// does not work on linux
-// move is not reliable, maybe it works only on mac
 const actual = mutations
-const expected = [{ type: "moved", newPath: fooDestinationPath }]
+const expected = [{ type: "added" }, { type: "removed" }]
 assert({ actual, expected })

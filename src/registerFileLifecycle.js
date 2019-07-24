@@ -1,5 +1,7 @@
-import { dirname, basename, sep } from "path"
-import { watch, statSync } from "fs"
+import { dirname, basename } from "path"
+import { watch, statSync, open, close } from "fs"
+import { promisify } from "util"
+import { operatingSystemIsWindows } from "./operatingSystemTypes.js"
 import { readFileModificationDate } from "./readFileModificationDate.js"
 import { statsToType } from "./statsToType.js"
 import { trackRessources } from "./trackRessources.js"
@@ -59,7 +61,7 @@ export const registerFileLifecycle = (path, { added, updated, removed }) => {
       },
     })
     const fileMutationStopTracking = tracker.registerCleanupCallback(fileMutationStopWatching)
-    added()
+    if (added) added()
   }
 
   try {
@@ -79,7 +81,7 @@ export const registerFileLifecycle = (path, { added, updated, removed }) => {
         })
         const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
       } else {
-        throw createMissingFileMessage({ path })
+        throw new Error(createMissingFileMessage({ path }))
       }
     } else {
       throw error
@@ -109,6 +111,9 @@ const watchFileMutation = (path, { update, remove }) => {
   }
 }
 
+const openAsync = promisify(open)
+const closeAsync = promisify(close)
+
 const watchFileCreation = (path, callback) => {
   const parentPath = dirname(path)
   let parentWatcher = watch(parentPath, { persistent: false })
@@ -117,17 +122,35 @@ const watchFileCreation = (path, callback) => {
 
     if (filename !== basename(path)) return
 
-    const stats = statSync(path)
-    const type = statsToType(stats)
-
-    // ignore if something else with that name gets created
-    // we are only interested into files
-    if (type !== "file") return
+    try {
+      const stats = statSync(path)
+      const type = statsToType(stats)
+      // ignore if something else with that name gets created
+      // we are only interested into files
+      if (type !== "file") return
+    } catch (error) {
+      if (error.code === "ENOENT") return
+      if (error.code === "EPERM") return
+      throw error
+    }
 
     parentWatcher.close()
     parentWatcher = undefined
     callback()
   })
+
+  if (operatingSystemIsWindows) {
+    parentWatcher.on("error", async (error) => {
+      // https://github.com/joyent/node/issues/4337
+      if (error.code === "EPERM") {
+        try {
+          const fd = await openAsync(parentPath, "r")
+          await closeAsync(fd)
+        } catch (error) {}
+      }
+      throw error
+    })
+  }
 
   return () => {
     if (parentWatcher) {
