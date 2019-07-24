@@ -4,22 +4,11 @@ import { pathnameToRelativePathname } from "@jsenv/operating-system-path"
 import { operatingSystemIsLinux } from "./operatingSystemTypes.js"
 import { createWatcher } from "./createWatcher.js"
 import { trackRessources } from "./trackRessources.js"
+import { statsToType } from "./statsToType.js"
 import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
 export const registerFolderLifecycle = async (path, { added }) => {
   const tracker = trackRessources()
-
-  const onChange = async (eventType, filename) => {
-    if (!filename) return
-    if (eventType !== "rename") return
-
-    const entryPath = `${path}${sep}${filename}`
-    const type = filesystemPathToTypeOrNull(entryPath)
-    if (type === null) return
-
-    const relativePath = `/${filename.replace(/\\/g, "/")}`
-    added({ relativePath, type })
-  }
 
   // linux does not support recursive option
   if (operatingSystemIsLinux()) {
@@ -33,10 +22,12 @@ export const registerFolderLifecycle = async (path, { added }) => {
 
         const entryPath = `${directoryPath}/${filename}`
         const stats = statSync(entryPath)
-        if (stats.isDirectory()) {
-          watchDirectory(entryPath, true)
-        } else {
-          onChange("rename", computeFilename(filename))
+        const type = statsToType(stats)
+        if (type) {
+          added({ relativePath: `/${computeFilename(filename)}`, type })
+          if (type === "directory") {
+            watchDirectory(entryPath, true)
+          }
         }
       })
 
@@ -52,10 +43,14 @@ export const registerFolderLifecycle = async (path, { added }) => {
       readdirSync(directoryPath).forEach((entry) => {
         const entryPath = `${directoryPath}/${entry}`
         const stats = statSync(entryPath)
-        if (stats.isDirectory()) {
-          watchDirectory(entryPath)
-        } else if (!nested) {
-          onChange("rename", computeFilename(entry))
+        const type = statsToType(stats)
+        if (type) {
+          if (!nested) {
+            added({ relativePath: `/${computeFilename(entry)}`, type })
+          }
+          if (type === "directory") {
+            watchDirectory(entryPath, true)
+          }
         }
       })
     }
@@ -65,6 +60,17 @@ export const registerFolderLifecycle = async (path, { added }) => {
     const watcher = createWatcher(path, { recursive: true, persistent: false })
     tracker.registerCleanupCallback(() => {
       watcher.close()
+    })
+    watcher.on("change", (eventType, filename) => {
+      if (!filename) return
+      if (eventType !== "rename") return
+
+      const entryPath = `${path}${sep}${filename}`
+      const type = filesystemPathToTypeOrNull(entryPath)
+      if (type === null) return
+
+      const relativePath = `/${filename.replace(/\\/g, "/")}`
+      added({ relativePath, type })
     })
   }
 
