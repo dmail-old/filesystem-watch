@@ -7,6 +7,18 @@ import { trackRessources } from "./trackRessources.js"
 import { statsToType } from "./statsToType.js"
 import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
+/**
+ * Here is the bug:
+ * We receive a 'rename' event when a gile gets updated
+ * not only when it gets created
+ * (by the way we must also test deleting a file and see how it behaves)
+ *
+ * To fix this we must first visit the whole folder structure
+ * to know the existing files
+ * once we have this we can know if the file is added or juste updated
+ * about removed I have to test it
+ */
+
 export const registerFolderLifecycle = async (path, { added, folderPredicate = () => true }) => {
   const tracker = trackRessources()
 

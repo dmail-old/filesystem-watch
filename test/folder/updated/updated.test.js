@@ -11,23 +11,19 @@ import {
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
 const fooPath = `${fixturesFolderPath}/foo.js`
-const modificationDateA = dateToSecondsPrecision(new Date(Date.now() + 1001))
-const modificationDateB = dateToSecondsPrecision(new Date(Date.now() + 2002))
+const modificationDate = dateToSecondsPrecision(new Date(Date.now() + 1001))
 
 await cleanFolder(fixturesFolderPath)
+await createFile(fooPath)
 const mutations = []
 registerFolderLifecycle(fixturesFolderPath, {
   added: (data) => {
     mutations.push({ name: "added", ...data })
   },
 })
-await createFile(fooPath)
-await wait(200)
-await changeFileModificationDate(fooPath, modificationDateA)
-await wait(200)
-await changeFileModificationDate(fooPath, modificationDateB)
+await changeFileModificationDate(fooPath, modificationDate)
 await wait(200)
 
 const actual = mutations
-const expected = [{ name: "added", relativePath: `/foo.js`, type: "file" }]
+const expected = []
 assert({ actual, expected })
