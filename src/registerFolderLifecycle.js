@@ -79,6 +79,7 @@ export const registerFolderLifecycle = async (
           handleFolderEntryFound({
             relativePath: `${relativePath}${entryRelativePath}`,
             type: entryType,
+            existent: false,
           })
         },
       })
