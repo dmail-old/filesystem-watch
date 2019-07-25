@@ -7,7 +7,7 @@ import { trackRessources } from "./trackRessources.js"
 import { statsToType } from "./statsToType.js"
 import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
-export const registerFolderLifecycle = async (path, { added }) => {
+export const registerFolderLifecycle = async (path, { added, folderPredicate = () => true }) => {
   const tracker = trackRessources()
 
   // linux does not support recursive option
@@ -23,11 +23,13 @@ export const registerFolderLifecycle = async (path, { added }) => {
         const entryPath = `${directoryPath}/${filename}`
         const stats = statSync(entryPath)
         const type = statsToType(stats)
-        if (type) {
-          added({ relativePath: `/${computeFilename(filename)}`, type })
-          if (type === "directory") {
-            watchDirectory(entryPath, true)
-          }
+        if (type === null) return
+
+        const relativePath = `/${computeFilename(filename)}`
+        if (type === "directory" && !folderPredicate(relativePath)) return
+        added({ relativePath, type })
+        if (type === "directory") {
+          watchDirectory(entryPath, true)
         }
       })
 
@@ -44,13 +46,17 @@ export const registerFolderLifecycle = async (path, { added }) => {
         const entryPath = `${directoryPath}/${entry}`
         const stats = statSync(entryPath)
         const type = statsToType(stats)
-        if (type) {
-          if (!nested) {
-            added({ relativePath: `/${computeFilename(entry)}`, type })
-          }
-          if (type === "directory") {
-            watchDirectory(entryPath, true)
-          }
+
+        if (type === null) return
+
+        const relativePath = `/${computeFilename(entry)}`
+        if (type === "directory" && !folderPredicate(relativePath)) return
+
+        if (!nested) {
+          added({ relativePath, type })
+        }
+        if (type === "directory") {
+          watchDirectory(entryPath, true)
         }
       })
     }
@@ -70,6 +76,8 @@ export const registerFolderLifecycle = async (path, { added }) => {
       if (type === null) return
 
       const relativePath = `/${filename.replace(/\\/g, "/")}`
+      if (type === "directory" && !folderPredicate(relativePath)) return
+
       added({ relativePath, type })
     })
   }
