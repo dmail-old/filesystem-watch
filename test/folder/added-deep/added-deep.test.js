@@ -1,7 +1,7 @@
 import { assert } from "@dmail/assert"
 import { importMetaURLToFolderPath } from "@jsenv/operating-system-path"
 import { registerFolderLifecycle } from "../../../index.js"
-import { cleanFolder, createFile, wait } from "../../testHelpers.js"
+import { cleanFolder, createFolder, createFile, wait } from "../../testHelpers.js"
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
 const fooPath = `${fixturesFolderPath}/folder/foo.js`
@@ -16,6 +16,7 @@ registerFolderLifecycle(fixturesFolderPath, {
     mutations.push({ name: "updated", ...data })
   },
 })
+await createFolder(`${fixturesFolderPath}/folder`)
 await createFile(fooPath)
 await wait(200)
 

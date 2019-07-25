@@ -9,18 +9,6 @@ import { createWatcher } from "./createWatcher.js"
 import { trackRessources } from "./trackRessources.js"
 import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
-/**
- * Here is the bug:
- * We receive a 'rename' event when a gile gets updated
- * not only when it gets created
- * (by the way we must also test deleting a file and see how it behaves)
- *
- * To fix this we must first visit the whole folder structure
- * to know the existing files
- * once we have this we can know if the file is added or juste updated
- * about removed I have to test it
- */
-
 export const registerFolderLifecycle = async (
   path,
   { added, updated, removed, folderFilter = () => true, notifyExistent = false },
@@ -29,7 +17,8 @@ export const registerFolderLifecycle = async (
 
   const contentMap = {}
   const topLevelFolderPathname = operatingSystemPathToPathname(path)
-  const isLinux = operatingSystemIsLinux()
+  // linux does not support recursive option
+  const fsWatchSupportsRecursive = !operatingSystemIsLinux()
 
   const handleEvent = (relativePath) => {
     const entryPath = `${topLevelFolderPathname}${relativePath}`
@@ -39,23 +28,29 @@ export const registerFolderLifecycle = async (
     // it's something new
     if (!previousType) {
       if (type === null) return
-      handleFolderEntryFound({ relativePath, type, existent: false })
+      handleEntryFound({ relativePath, type, existent: false })
       return
     }
 
     // it existed but now it's not here anymore
     if (type === null) {
-      handleFolderEntryLost({ relativePath, type: previousType })
+      handleEntryLost({ relativePath, type: previousType })
       return
     }
 
     // it existed but was replaced by something else
     // it's not really an update
     if (previousType !== type) {
-      handleFolderEntryLost({ relativePath, type: previousType })
-      handleFolderEntryFound({ relativePath, type })
+      handleEntryLost({ relativePath, type: previousType })
+      handleEntryFound({ relativePath, type })
       return
     }
+
+    // a directory cannot really be updated in way that matters for us
+    // filesystem is trying to tell us the directory content have changed
+    // but we don't care about that
+    // we'll already be notified about what has changed
+    if (type === "directory") return
 
     // right same type, and the file existed and was not deleted
     // it's likely an update ?
@@ -65,20 +60,24 @@ export const registerFolderLifecycle = async (
     }
   }
 
-  const handleFolderEntryFound = ({ relativePath, type, existent }) => {
+  const handleEntryFound = ({ relativePath, type, existent }) => {
     contentMap[relativePath] = type
+    if (added && (!existent || notifyExistent)) {
+      added({ relativePath, type })
+    }
 
-    // linux does not support recursive option, we must watch
-    // manually every directory we find
-    if (isLinux && type === "directory") {
+    // we must watch manually every directory we find
+    if (!fsWatchSupportsRecursive && type === "directory") {
       const folderPathname = `${topLevelFolderPathname}${relativePath}`
       visitFolderRecursively({
         topLevelFolderPathname: folderPathname,
-        folderFilter,
-        entryFound: ({ relativePath: entryRelativePath, type: entryType }) => {
-          handleFolderEntryFound({
-            relativePath: `${relativePath}${entryRelativePath}`,
-            type: entryType,
+        folderFilter: (subfolderRelativePath) => {
+          return folderFilter(`${relativePath}${subfolderRelativePath}`)
+        },
+        entryFound: (entry) => {
+          handleEntryFound({
+            relativePath: `${relativePath}${entry.relativePath}`,
+            type: entry.type,
             existent: false,
           })
         },
@@ -91,16 +90,12 @@ export const registerFolderLifecycle = async (
       })
       watcher.on("change", (eventType, filename) => {
         if (!filename) return
-        handleEvent(`${relativePath}${filename}`, eventType)
+        handleEvent(`${relativePath}/${filename}`, eventType)
       })
-    }
-
-    if (added && (!existent || notifyExistent)) {
-      added({ relativePath, type })
     }
   }
 
-  const handleFolderEntryLost = ({ relativePath, type }) => {
+  const handleEntryLost = ({ relativePath, type }) => {
     delete contentMap[relativePath]
     if (removed) {
       removed({ relativePath, type })
@@ -111,10 +106,13 @@ export const registerFolderLifecycle = async (
     topLevelFolderPathname,
     folderFilter,
     entryFound: ({ relativePath, type }) =>
-      handleFolderEntryFound({ relativePath, type, existent: true }),
+      handleEntryFound({ relativePath, type, existent: true }),
   })
 
-  const watcher = createWatcher(path, { recursive: !isLinux, persistent: false })
+  const watcher = createWatcher(path, {
+    recursive: fsWatchSupportsRecursive,
+    persistent: false,
+  })
   tracker.registerCleanupCallback(() => {
     watcher.close()
   })
