@@ -4,7 +4,7 @@ import { registerFolderLifecycle } from "../../../index.js"
 import { cleanFolder, createFile, wait } from "../../testHelpers.js"
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
-const fooPath = `${fixturesFolderPath}/folder/foo.js`
+const fooPath = `${fixturesFolderPath}/foo.js`
 
 await cleanFolder(fixturesFolderPath)
 const mutations = []
@@ -20,8 +20,5 @@ await createFile(fooPath)
 await wait(200)
 
 const actual = mutations
-const expected = [
-  { name: "added", relativePath: `/folder`, type: "directory" },
-  { name: "added", relativePath: `/folder/foo.js`, type: "file" },
-]
+const expected = [{ name: "added", relativePath: `/foo.js`, type: "file" }]
 assert({ actual, expected })

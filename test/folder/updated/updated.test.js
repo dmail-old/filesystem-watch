@@ -20,10 +20,13 @@ registerFolderLifecycle(fixturesFolderPath, {
   added: (data) => {
     mutations.push({ name: "added", ...data })
   },
+  updated: (data) => {
+    mutations.push({ name: "updated", ...data })
+  },
 })
 await changeFileModificationDate(fooPath, modificationDate)
 await wait(200)
 
 const actual = mutations
-const expected = []
+const expected = [{ name: "updated", relativePath: "/foo.js", type: "file" }]
 assert({ actual, expected })

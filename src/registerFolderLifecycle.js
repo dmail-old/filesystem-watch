@@ -1,10 +1,12 @@
-import { sep } from "path"
-import { statSync, readdirSync } from "fs"
-import { pathnameToRelativePathname } from "@jsenv/operating-system-path"
+import { readdirSync } from "fs"
+import {
+  pathnameToRelativePathname,
+  operatingSystemPathToPathname,
+  pathnameToOperatingSystemPath,
+} from "@jsenv/operating-system-path"
 import { operatingSystemIsLinux } from "./operatingSystemTypes.js"
 import { createWatcher } from "./createWatcher.js"
 import { trackRessources } from "./trackRessources.js"
-import { statsToType } from "./statsToType.js"
 import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
 /**
@@ -19,80 +21,128 @@ import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
  * about removed I have to test it
  */
 
-export const registerFolderLifecycle = async (path, { added, folderPredicate = () => true }) => {
+export const registerFolderLifecycle = async (
+  path,
+  { added, updated, removed, folderFilter = () => true, notifyExistent = false },
+) => {
   const tracker = trackRessources()
 
-  // linux does not support recursive option
-  if (operatingSystemIsLinux()) {
-    const watchDirectory = async (directoryPath, nested = false) => {
-      const isRootDirectory = directoryPath === path
-      const watcher = createWatcher(directoryPath, { persistent: false })
+  const contentMap = {}
+  const topLevelFolderPathname = operatingSystemPathToPathname(path)
+  const isLinux = operatingSystemIsLinux()
 
-      watcher.on("change", async (eventType, filename) => {
-        if (!filename) return
-        if (eventType !== "rename") return
+  const handleEvent = (relativePath) => {
+    const entryPath = `${topLevelFolderPathname}${relativePath}`
+    const previousType = contentMap[relativePath]
+    const type = filesystemPathToTypeOrNull(entryPath)
 
-        const entryPath = `${directoryPath}/${filename}`
-        const stats = statSync(entryPath)
-        const type = statsToType(stats)
-        if (type === null) return
+    // it's something new
+    if (!previousType) {
+      if (type === null) return
+      handleFolderEntryFound({ relativePath, type, existent: false })
+      return
+    }
 
-        const relativePath = `/${computeFilename(filename)}`
-        if (type === "directory" && !folderPredicate(relativePath)) return
-        added({ relativePath, type })
-        if (type === "directory") {
-          watchDirectory(entryPath, true)
-        }
+    // it existed but now it's not here anymore
+    if (type === null) {
+      handleFolderEntryLost({ relativePath, type: previousType })
+      return
+    }
+
+    // it existed but was replaced by something else
+    // it's not really an update
+    if (previousType !== type) {
+      handleFolderEntryLost({ relativePath, type: previousType })
+      handleFolderEntryFound({ relativePath, type })
+      return
+    }
+
+    // right same type, and the file existed and was not deleted
+    // it's likely an update ?
+    // but are we sure it's an update ?
+    if (updated) {
+      updated({ relativePath, type })
+    }
+  }
+
+  const handleFolderEntryFound = ({ relativePath, type, existent }) => {
+    contentMap[relativePath] = type
+
+    // linux does not support recursive option, we must watch
+    // manually every directory we find
+    if (isLinux && type === "directory") {
+      const folderPathname = `${topLevelFolderPathname}${relativePath}`
+      visitFolderRecursively({
+        topLevelFolderPathname: folderPathname,
+        folderFilter,
+        entryFound: ({ relativePath: entryRelativePath, type: entryType }) => {
+          handleFolderEntryFound({
+            relativePath: `${relativePath}${entryRelativePath}`,
+            type: entryType,
+          })
+        },
       })
 
+      const folderPath = pathnameToOperatingSystemPath(folderPathname)
+      const watcher = createWatcher(folderPath, { persistent: false })
       tracker.registerCleanupCallback(() => {
         watcher.close()
       })
-
-      const computeFilename = (filename) => {
-        if (isRootDirectory) return filename
-        return `${pathnameToRelativePathname(directoryPath, path).slice(1)}/${filename}`
-      }
-
-      readdirSync(directoryPath).forEach((entry) => {
-        const entryPath = `${directoryPath}/${entry}`
-        const stats = statSync(entryPath)
-        const type = statsToType(stats)
-
-        if (type === null) return
-
-        const relativePath = `/${computeFilename(entry)}`
-        if (type === "directory" && !folderPredicate(relativePath)) return
-
-        if (!nested) {
-          added({ relativePath, type })
-        }
-        if (type === "directory") {
-          watchDirectory(entryPath, true)
-        }
+      watcher.on("change", (eventType, filename) => {
+        if (!filename) return
+        handleEvent(`${relativePath}${filename}`, eventType)
       })
     }
 
-    watchDirectory(path)
-  } else {
-    const watcher = createWatcher(path, { recursive: true, persistent: false })
-    tracker.registerCleanupCallback(() => {
-      watcher.close()
-    })
-    watcher.on("change", (eventType, filename) => {
-      if (!filename) return
-      if (eventType !== "rename") return
+    if (added && (!existent || notifyExistent)) {
+      added({ relativePath, type })
+    }
+  }
 
-      const entryPath = `${path}${sep}${filename}`
+  const handleFolderEntryLost = ({ relativePath, type }) => {
+    delete contentMap[relativePath]
+    if (removed) {
+      removed({ relativePath, type })
+    }
+  }
+
+  visitFolderRecursively({
+    topLevelFolderPathname,
+    folderFilter,
+    entryFound: ({ relativePath, type }) =>
+      handleFolderEntryFound({ relativePath, type, existent: true }),
+  })
+
+  const watcher = createWatcher(path, { recursive: !isLinux, persistent: false })
+  tracker.registerCleanupCallback(() => {
+    watcher.close()
+  })
+  watcher.on("change", (eventType, filename) => {
+    if (!filename) return
+    handleEvent(`/${filename.replace(/\\/g, "/")}`, eventType)
+  })
+
+  return tracker.cleanup
+}
+
+const visitFolderRecursively = ({ topLevelFolderPathname, folderFilter, entryFound }) => {
+  const visitFolder = (folderPathname) => {
+    const folderPath = pathnameToOperatingSystemPath(folderPathname)
+
+    readdirSync(folderPath).forEach((entry) => {
+      const entryPathname = `${folderPathname}/${entry}`
+      const entryPath = pathnameToOperatingSystemPath(entryPathname)
       const type = filesystemPathToTypeOrNull(entryPath)
       if (type === null) return
 
-      const relativePath = `/${filename.replace(/\\/g, "/")}`
-      if (type === "directory" && !folderPredicate(relativePath)) return
+      const relativePath = pathnameToRelativePathname(entryPathname, topLevelFolderPathname)
+      if (type === "directory" && !folderFilter(relativePath)) return
 
-      added({ relativePath, type })
+      entryFound({
+        relativePath,
+        type,
+      })
     })
   }
-
-  return tracker.cleanup
+  visitFolder(topLevelFolderPathname)
 }
