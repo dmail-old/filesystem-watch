@@ -16,6 +16,7 @@ import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
 // linux does not support recursive option
 const fsWatchSupportsRecursive = !operatingSystemIsLinux()
+// sounds like window does not support removal detection https://github.com/joyent/libuv/issues/1479
 
 export const registerFolderLifecycle = async (
   path,
@@ -48,7 +49,8 @@ export const registerFolderLifecycle = async (
   const folderPathname = operatingSystemPathToPathname(path)
 
   const handleEvent = (relativePath) => {
-    const entryPath = `${folderPathname}${relativePath}`
+    const entryPathname = `${folderPathname}${relativePath}`
+    const entryPath = pathnameToOperatingSystemPath(entryPathname)
     const previousType = contentMap[relativePath]
     const type = filesystemPathToTypeOrNull(entryPath)
 

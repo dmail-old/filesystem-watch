@@ -26,5 +26,5 @@ await changeFileModificationDate(fooPath, modificationDate)
 await wait(200)
 
 const actual = mutations
-const expected = [{ type: "updated", modificationDate }]
+const expected = [{ type: "updated" }]
 assert({ actual, expected })

@@ -19,7 +19,7 @@ registerFileLifecycle(fooPath, {
   removed: () => {
     mutations.push({ type: "removed" })
   },
-  callAddedWhenFileAlreadyExists: true,
+  notifyExistent: true,
 })
 
 const actual = mutations

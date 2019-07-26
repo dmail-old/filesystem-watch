@@ -12,7 +12,7 @@ export const createWatcher = (path, options) => {
 }
 
 const fixPermissionIssueIfWindows = (watcher, path) => {
-  if (operatingSystemIsWindows) {
+  if (operatingSystemIsWindows()) {
     watcher.on("error", async (error) => {
       // https://github.com/joyent/node/issues/4337
       if (error.code === "EPERM") {

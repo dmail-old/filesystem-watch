@@ -1,13 +1,13 @@
-import { watch, statSync, existsSync } from "fs"
+import { statSync, existsSync } from "fs"
+import { createWatcher } from "./createWatcher.js"
 import { watchFileCreation } from "./folder-watching.js"
 import { operatingSystemIsLinux } from "./operatingSystemTypes.js"
-import { readFileModificationDate } from "./readFileModificationDate.js"
 import { statsToType } from "./statsToType.js"
 import { trackRessources } from "./trackRessources.js"
 
 export const registerFileLifecycle = (
   path,
-  { added, updated, removed, callAddedWhenFileAlreadyExists = false },
+  { added, updated, removed, notifyExistent = false },
 ) => {
   if (added && typeof added !== "function") {
     throw new TypeError(`added must be a function, got ${added}`)
@@ -21,40 +21,20 @@ export const registerFileLifecycle = (
 
   const tracker = trackRessources()
 
-  const fileExistsCallback = ({ alreadyExists }) => {
-    let updateCallback
-    if (updated) {
-      let lastKnownModificationDate = readFileModificationDate(path)
-
-      updateCallback = () => {
-        const previousModificationDate = lastKnownModificationDate
-        const modificationDate = readFileModificationDate(path)
-        lastKnownModificationDate = modificationDate
-        // be sure we are not wrongly notified
-        // I don't remember how it can happen
-        // but it happens
-        if (Number(previousModificationDate) === Number(modificationDate)) return
-
-        updated({ modificationDate })
-      }
-    }
-
-    let removeCallback
-    if (removed) {
-      removeCallback = removed
-    }
-
+  const fileExistsCallback = ({ existent }) => {
     const fileMutationStopWatching = watchFileMutation(path, {
-      update: updateCallback,
-      remove: () => {
+      updated,
+      removed: () => {
         fileMutationStopTracking()
-        if (removeCallback) removeCallback()
+        if (removed) {
+          removed()
+        }
       },
     })
     const fileMutationStopTracking = tracker.registerCleanupCallback(fileMutationStopWatching)
 
     if (added) {
-      if (alreadyExists && !callAddedWhenFileAlreadyExists) return
+      if (existent && !notifyExistent) return
       added()
     }
   }
@@ -63,7 +43,7 @@ export const registerFileLifecycle = (
     const stats = statSync(path)
     const type = statsToType(stats)
     if (type === "file") {
-      fileExistsCallback({ alreadyExists: true })
+      fileExistsCallback({ existent: true })
     } else {
       throw new Error(createUnexpectedStatsTypeMessage({ type, path }))
     }
@@ -72,7 +52,7 @@ export const registerFileLifecycle = (
       if (added) {
         const fileCreationStopWatching = watchFileCreation(path, () => {
           fileCreationgStopTracking()
-          fileExistsCallback({ alreadyExists: false })
+          fileExistsCallback({ existent: false })
         })
         const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
       } else {
@@ -86,20 +66,20 @@ export const registerFileLifecycle = (
   return tracker.cleanup
 }
 
-const watchFileMutation = (path, { update, remove }) => {
-  let watcher = watch(path, { persistent: false })
+const watchFileMutation = (path, { updated, removed }) => {
+  let watcher = createWatcher(path, { persistent: false })
 
   watcher.on("change", (eventType) => {
     if (eventType === "change") {
-      if (update) {
+      if (updated) {
         if (operatingSystemIsLinux() && !existsSync(path)) return
-        update()
+        updated()
       }
     } else if (eventType === "rename") {
       watcher.close()
       watcher = undefined
-      if (remove) {
-        remove()
+      if (removed) {
+        removed()
       }
     }
   })
