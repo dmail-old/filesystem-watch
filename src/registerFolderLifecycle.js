@@ -14,6 +14,9 @@ import { createWatcher } from "./createWatcher.js"
 import { trackRessources } from "./trackRessources.js"
 import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
+// linux does not support recursive option
+const fsWatchSupportsRecursive = !operatingSystemIsLinux()
+
 export const registerFolderLifecycle = async (
   path,
   { added, updated, removed, watchDescription = { "/**/*": true }, notifyExistent = false },
@@ -42,12 +45,10 @@ export const registerFolderLifecycle = async (
   const tracker = trackRessources()
 
   const contentMap = {}
-  const topLevelFolderPathname = operatingSystemPathToPathname(path)
-  // linux does not support recursive option
-  const fsWatchSupportsRecursive = !operatingSystemIsLinux()
+  const folderPathname = operatingSystemPathToPathname(path)
 
   const handleEvent = (relativePath) => {
-    const entryPath = `${topLevelFolderPathname}${relativePath}`
+    const entryPath = `${folderPathname}${relativePath}`
     const previousType = contentMap[relativePath]
     const type = filesystemPathToTypeOrNull(entryPath)
 
@@ -94,15 +95,30 @@ export const registerFolderLifecycle = async (
     if (!entryShouldBeWatched({ relativePath, type })) return
 
     contentMap[relativePath] = type
+
+    const entryPathname = `${folderPathname}${relativePath}`
+
+    if (type === "directory") {
+      visitFolder({
+        folderPathname: entryPathname,
+        entryFound: (entry) => {
+          handleEntryFound({
+            relativePath: `${relativePath}${entry.relativePath}`,
+            type: entry.type,
+            existent,
+          })
+        },
+      })
+    }
+
     if (added && (!existent || notifyExistent)) {
       added({ relativePath, type })
     }
 
     // we must watch manually every directory we find
     if (!fsWatchSupportsRecursive && type === "directory") {
-      const folderPathname = `${topLevelFolderPathname}${relativePath}`
-      visitFolderRecursively({
-        topLevelFolderPathname: folderPathname,
+      visitFolder({
+        folderPathname: entryPathname,
         entryFound: (entry) => {
           handleEntryFound({
             relativePath: `${relativePath}${entry.relativePath}`,
@@ -131,10 +147,11 @@ export const registerFolderLifecycle = async (
     }
   }
 
-  visitFolderRecursively({
-    topLevelFolderPathname,
-    entryFound: ({ relativePath, type }) =>
-      handleEntryFound({ relativePath, type, existent: true }),
+  visitFolder({
+    folderPathname,
+    entryFound: ({ relativePath, type }) => {
+      handleEntryFound({ relativePath, type, existent: true })
+    },
   })
 
   const watcher = createWatcher(path, {
@@ -152,23 +169,20 @@ export const registerFolderLifecycle = async (
   return tracker.cleanup
 }
 
-const visitFolderRecursively = ({ topLevelFolderPathname, entryFound }) => {
-  const visitFolder = (folderPathname) => {
-    const folderPath = pathnameToOperatingSystemPath(folderPathname)
+const visitFolder = ({ folderPathname, entryFound }) => {
+  const folderPath = pathnameToOperatingSystemPath(folderPathname)
 
-    readdirSync(folderPath).forEach((entry) => {
-      const entryPathname = `${folderPathname}/${entry}`
-      const entryPath = pathnameToOperatingSystemPath(entryPathname)
-      const type = filesystemPathToTypeOrNull(entryPath)
-      if (type === null) return
+  readdirSync(folderPath).forEach((entry) => {
+    const entryPathname = `${folderPathname}/${entry}`
+    const entryPath = pathnameToOperatingSystemPath(entryPathname)
+    const type = filesystemPathToTypeOrNull(entryPath)
+    if (type === null) return
 
-      const relativePath = pathnameToRelativePathname(entryPathname, topLevelFolderPathname)
+    const relativePath = pathnameToRelativePathname(entryPathname, folderPathname)
 
-      entryFound({
-        relativePath,
-        type,
-      })
+    entryFound({
+      relativePath,
+      type,
     })
-  }
-  visitFolder(topLevelFolderPathname)
+  })
 }
