@@ -17,6 +17,7 @@ registerFolderLifecycle(fixturesFolderPath, {
   },
 })
 await createFolder(`${fixturesFolderPath}/folder`)
+await wait(200)
 await createFile(fooPath)
 await wait(200)
 

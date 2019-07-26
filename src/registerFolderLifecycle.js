@@ -117,19 +117,8 @@ export const registerFolderLifecycle = async (
 
     // we must watch manually every directory we find
     if (!fsWatchSupportsRecursive && type === "directory") {
-      visitFolder({
-        folderPathname: entryPathname,
-        entryFound: (entry) => {
-          handleEntryFound({
-            relativePath: `${relativePath}${entry.relativePath}`,
-            type: entry.type,
-            existent: false,
-          })
-        },
-      })
-
-      const folderPath = pathnameToOperatingSystemPath(folderPathname)
-      const watcher = createWatcher(folderPath, { persistent: false })
+      const entryPath = pathnameToOperatingSystemPath(entryPathname)
+      const watcher = createWatcher(entryPath, { persistent: false })
       tracker.registerCleanupCallback(() => {
         watcher.close()
       })
