@@ -1,6 +1,6 @@
 {
 	"name": "@dmail/filesystem-watch",
-	"version": "2.1.0",
+	"version": "2.2.0",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
@@ -22,9 +22,9 @@
 		"@dmail/cancellation": "2.3.0"
 	},
 	"devDependencies": {
-		"@jsenv/core": "5.113.0",
+		"@jsenv/core": "5.117.0",
 		"@jsenv/bundling": "1.11.0",
-		"@jsenv/testing": "1.14.0",
+		"@jsenv/testing": "1.18.0",
 		"@jsenv/node-launcher": "1.11.0",
 		"@jsenv/node-module-import-map": "3.0.0",
 		"@jsenv/eslint-config": "8.0.0",
