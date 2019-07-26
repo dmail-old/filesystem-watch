@@ -4,6 +4,11 @@ import {
   operatingSystemPathToPathname,
   pathnameToOperatingSystemPath,
 } from "@jsenv/operating-system-path"
+import {
+  namedValueDescriptionToMetaDescription,
+  pathnameCanContainsMetaMatching,
+  pathnameToMeta,
+} from "@dmail/project-structure"
 import { operatingSystemIsLinux } from "./operatingSystemTypes.js"
 import { createWatcher } from "./createWatcher.js"
 import { trackRessources } from "./trackRessources.js"
@@ -11,8 +16,29 @@ import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
 export const registerFolderLifecycle = async (
   path,
-  { added, updated, removed, folderFilter = () => true, notifyExistent = false },
+  { added, updated, removed, watchDescription = { "/**/*": true }, notifyExistent = false },
 ) => {
+  const metaDescription = namedValueDescriptionToMetaDescription({
+    watch: watchDescription,
+  })
+  const entryShouldBeWatched = ({ relativePath, type }) => {
+    if (type === "directory") {
+      const canContainEntryToWatch = pathnameCanContainsMetaMatching({
+        pathname: relativePath,
+        metaDescription,
+        predicate: ({ watch }) => watch,
+      })
+      return canContainEntryToWatch
+    }
+
+    const entryMeta = pathnameToMeta({
+      pathname: relativePath,
+      metaDescription,
+    })
+
+    return entryMeta.watch
+  }
+
   const tracker = trackRessources()
 
   const contentMap = {}
@@ -24,6 +50,10 @@ export const registerFolderLifecycle = async (
     const entryPath = `${topLevelFolderPathname}${relativePath}`
     const previousType = contentMap[relativePath]
     const type = filesystemPathToTypeOrNull(entryPath)
+
+    if (!entryShouldBeWatched({ relativePath, type })) {
+      return
+    }
 
     // it's something new
     if (!previousType) {
@@ -61,6 +91,8 @@ export const registerFolderLifecycle = async (
   }
 
   const handleEntryFound = ({ relativePath, type, existent }) => {
+    if (!entryShouldBeWatched({ relativePath, type })) return
+
     contentMap[relativePath] = type
     if (added && (!existent || notifyExistent)) {
       added({ relativePath, type })
@@ -71,9 +103,6 @@ export const registerFolderLifecycle = async (
       const folderPathname = `${topLevelFolderPathname}${relativePath}`
       visitFolderRecursively({
         topLevelFolderPathname: folderPathname,
-        folderFilter: (subfolderRelativePath) => {
-          return folderFilter(`${relativePath}${subfolderRelativePath}`)
-        },
         entryFound: (entry) => {
           handleEntryFound({
             relativePath: `${relativePath}${entry.relativePath}`,
@@ -104,7 +133,6 @@ export const registerFolderLifecycle = async (
 
   visitFolderRecursively({
     topLevelFolderPathname,
-    folderFilter,
     entryFound: ({ relativePath, type }) =>
       handleEntryFound({ relativePath, type, existent: true }),
   })
@@ -124,7 +152,7 @@ export const registerFolderLifecycle = async (
   return tracker.cleanup
 }
 
-const visitFolderRecursively = ({ topLevelFolderPathname, folderFilter, entryFound }) => {
+const visitFolderRecursively = ({ topLevelFolderPathname, entryFound }) => {
   const visitFolder = (folderPathname) => {
     const folderPath = pathnameToOperatingSystemPath(folderPathname)
 
@@ -135,7 +163,6 @@ const visitFolderRecursively = ({ topLevelFolderPathname, folderFilter, entryFou
       if (type === null) return
 
       const relativePath = pathnameToRelativePathname(entryPathname, topLevelFolderPathname)
-      if (type === "directory" && !folderFilter(relativePath)) return
 
       entryFound({
         relativePath,
