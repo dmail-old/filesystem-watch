@@ -18,7 +18,7 @@ import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 const fsWatchSupportsRecursive = !operatingSystemIsLinux()
 // sounds like window does not support removal detection https://github.com/joyent/libuv/issues/1479
 
-export const registerFolderLifecycle = async (
+export const registerFolderLifecycle = (
   path,
   { added, updated, removed, watchDescription = { "/**/*": true }, notifyExistent = false },
 ) => {
