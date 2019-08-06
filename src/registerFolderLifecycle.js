@@ -16,8 +16,6 @@ import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
 // linux does not support recursive option
 const fsWatchSupportsRecursive = !operatingSystemIsLinux()
-// sounds like window does not support removal detection https://github.com/joyent/libuv/issues/1479
-
 export const registerFolderLifecycle = (
   path,
   { added, updated, removed, watchDescription = { "/**/*": true }, notifyExistent = false },
@@ -48,7 +46,50 @@ export const registerFolderLifecycle = (
   const contentMap = {}
   const folderPathname = operatingSystemPathToPathname(path)
 
-  const handleEvent = (relativePath) => {
+  const handleEvent = ({ dirname, basename, eventType }) => {
+    if (dirname && basename) {
+      handleChange(`/${dirname}/${basename}`)
+    } else if (basename) {
+      handleChange(`/${basename}`)
+    } else if (dirname && removed && eventType === "rename") {
+      // we might receive `rename` event without filename
+      // when a file is removed.
+      // in that case, if we are interested by removals
+      // we check what file was removed
+      // note: it's pretty expensive to do that on large folders
+      // this is to fix windows emitting null on file removal
+      // https://github.com/joyent/libuv/issues/1479
+
+      const removedEntryRelativePath = Object.keys(contentMap).find((relativePath) => {
+        const directoryPath = `/${dirname}`
+
+        // entry not inside this directory
+        if (!relativePath.startsWith(directoryPath)) return false
+
+        const afterDirectory = relativePath.slice(directoryPath.length + 1)
+        // deep inside this directory
+        if (afterDirectory.includes("/")) return false
+
+        const type = filesystemPathToTypeOrNull(
+          pathnameToOperatingSystemPath(`${directoryPath}/${afterDirectory}`),
+        )
+        if (type !== null) {
+          return false
+        }
+
+        return true
+      })
+
+      if (removedEntryRelativePath) {
+        handleEntryLost({
+          relativePath: removedEntryRelativePath,
+          type: contentMap[removedEntryRelativePath],
+        })
+      }
+    }
+  }
+
+  const handleChange = (relativePath) => {
     const entryPathname = `${folderPathname}${relativePath}`
     const entryPath = pathnameToOperatingSystemPath(entryPathname)
     const previousType = contentMap[relativePath]
@@ -125,8 +166,11 @@ export const registerFolderLifecycle = (
         watcher.close()
       })
       watcher.on("change", (eventType, filename) => {
-        if (!filename) return
-        handleEvent(`${relativePath}/${filename}`, eventType)
+        handleEvent({
+          dirname: relativePath.slice(1),
+          basename: filename ? filename.replace(/\\/g, "/") : "",
+          eventType,
+        })
       })
     }
   }
@@ -153,8 +197,10 @@ export const registerFolderLifecycle = (
     watcher.close()
   })
   watcher.on("change", (eventType, filename) => {
-    if (!filename) return
-    handleEvent(`/${filename.replace(/\\/g, "/")}`, eventType)
+    handleEvent({
+      ...pathToDirnameAndBasename(filename),
+      eventType,
+    })
   })
 
   return tracker.cleanup
@@ -176,4 +222,31 @@ const visitFolder = ({ folderPathname, entryFound }) => {
       type,
     })
   })
+}
+
+const pathToDirnameAndBasename = (path) => {
+  if (!path) {
+    return {
+      dirname: "",
+      basename: "",
+    }
+  }
+
+  const normalizedPath = path.replace(/\\/g, "/")
+  const slashLastIndex = normalizedPath.lastIndexOf("/")
+
+  if (slashLastIndex === -1) {
+    return {
+      dirname: "",
+      basename: normalizedPath,
+    }
+  }
+
+  const dirname = normalizedPath.slice(0, slashLastIndex)
+  const basename = normalizedPath.slice(slashLastIndex + 1)
+
+  return {
+    dirname,
+    basename,
+  }
 }
