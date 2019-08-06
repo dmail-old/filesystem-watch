@@ -6,10 +6,6 @@
 
 > Watch changes on your filesystem, either in a folder or on a specific file.
 
-Warning: still in development.
-
-TODO: install linux os and check why registerFileLifecycle tests fails on linux.
-
 ## Introduction
 
 `@dmail/filesystem-watch` has the following exports.<br />
@@ -25,7 +21,7 @@ TODO: install linux os and check why registerFileLifecycle tests fails on linux.
 import { registerFolderLifecycle } from "@dmail/filesystem-watch"
 
 const folderContentMap = {}
-registerFolderLifecycle("/Users/me/folder", {
+registerFolderLifecycle("/Users/you/folder", {
   added: ({ relativePath, type ) => {
     folderContentMap[relativePath] = type
   },
@@ -45,7 +41,7 @@ registerFolderLifecycle("/Users/me/folder", {
 import { readFileSync } from "fs"
 import { registerFileLifecycle } from "@dmail/filesystem-watch"
 
-const path = "/Users/me/folder/config.js"
+const path = "/Users/you/folder/config.js"
 let currentConfig = null
 registerFileLifecycle(path, {
   added: () => {
