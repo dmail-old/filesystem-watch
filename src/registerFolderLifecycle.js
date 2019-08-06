@@ -20,6 +20,16 @@ export const registerFolderLifecycle = (
   path,
   { added, updated, removed, watchDescription = { "/**/*": true }, notifyExistent = false },
 ) => {
+  if (!undefinedOrFunction(added)) {
+    throw new TypeError(`added must be a function or undefined, got ${added}`)
+  }
+  if (!undefinedOrFunction(added)) {
+    throw new TypeError(`updated must be a function or undefined, got ${updated}`)
+  }
+  if (!undefinedOrFunction(removed)) {
+    throw new TypeError(`removed must be a function or undefined, got ${removed}`)
+  }
+
   const metaDescription = namedValueDescriptionToMetaDescription({
     watch: watchDescription,
   })
@@ -51,7 +61,7 @@ export const registerFolderLifecycle = (
       handleChange(`/${dirname}/${basename}`)
     } else if (basename) {
       handleChange(`/${basename}`)
-    } else if (dirname && removed && eventType === "rename") {
+    } else if ((removed || added) && eventType === "rename") {
       // we might receive `rename` event without filename
       // when a file is removed.
       // in that case, if we are interested by removals
@@ -60,23 +70,28 @@ export const registerFolderLifecycle = (
       // this is to fix windows emitting null on file removal
       // https://github.com/joyent/libuv/issues/1479
 
-      const removedEntryRelativePath = Object.keys(contentMap).find((relativePath) => {
-        const directoryPath = `/${dirname}`
+      const relativePathCandidateArray = dirname
+        ? Object.keys(contentMap).filter((relativePath) => {
+            const directoryPath = `/${dirname}`
 
-        // entry not inside this directory
-        if (!relativePath.startsWith(directoryPath)) return false
+            // entry not inside this directory
+            if (!relativePath.startsWith(directoryPath)) return false
 
-        const afterDirectory = relativePath.slice(directoryPath.length + 1)
-        // deep inside this directory
-        if (afterDirectory.includes("/")) return false
+            const afterDirectory = relativePath.slice(directoryPath.length + 1)
+            // deep inside this directory
+            if (afterDirectory.includes("/")) return false
 
+            return true
+          })
+        : Object.keys(contentMap)
+
+      const removedEntryRelativePath = relativePathCandidateArray.find((relativePathCandidate) => {
         const type = filesystemPathToTypeOrNull(
-          pathnameToOperatingSystemPath(`${directoryPath}/${afterDirectory}`),
+          pathnameToOperatingSystemPath(`${folderPathname}${relativePathCandidate}`),
         )
         if (type !== null) {
           return false
         }
-
         return true
       })
 
@@ -154,8 +169,14 @@ export const registerFolderLifecycle = (
       })
     }
 
-    if (added && (!existent || notifyExistent)) {
-      added({ relativePath, type })
+    if (added) {
+      if (existent) {
+        if (notifyExistent) {
+          added({ relativePath, type, existent: true })
+        }
+      } else {
+        added({ relativePath, type })
+      }
     }
 
     // we must watch manually every directory we find
@@ -205,6 +226,8 @@ export const registerFolderLifecycle = (
 
   return tracker.cleanup
 }
+
+const undefinedOrFunction = (value) => typeof value === "undefined" || typeof value === "function"
 
 const visitFolder = ({ folderPathname, entryFound }) => {
   const folderPath = pathnameToOperatingSystemPath(folderPathname)

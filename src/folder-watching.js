@@ -6,9 +6,7 @@ export const watchFileCreation = (path, callback) => {
   const parentPath = dirname(path)
   let parentWatcher = createWatcher(parentPath, { persistent: false })
   parentWatcher.on("change", (eventType, filename) => {
-    if (eventType !== "rename") return
-
-    if (filename !== basename(path)) return
+    if (filename && filename !== basename(path)) return
 
     const type = filesystemPathToTypeOrNull(path)
     // ignore if something else with that name gets created

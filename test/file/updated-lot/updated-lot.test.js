@@ -27,11 +27,11 @@ registerFileLifecycle(fooPath, {
   },
 })
 await changeFileModificationDate(fooPath, modificationDateA)
-await wait(200)
+await wait(300)
 await changeFileModificationDate(fooPath, modificationDateB)
-await wait(200)
+await wait(300)
 await changeFileModificationDate(fooPath, modificationDateC)
-await wait(200)
+await wait(300)
 
 const actual = mutations
 const expected = [{ type: "updated" }, { type: "updated" }, { type: "updated" }]

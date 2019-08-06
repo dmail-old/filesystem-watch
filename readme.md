@@ -19,37 +19,53 @@ TODO: install linux os and check why registerFileLifecycle tests fails on linux.
 
 ## `registerFolderLifecycle` example
 
+`registerFolderLifecycle` is meant to be used when you need to something in sync with a given folder contents.
+
 ```js
 import { registerFolderLifecycle } from "@dmail/filesystem-watch"
 
+const folderContentMap = {}
 registerFolderLifecycle("/Users/me/folder", {
-  added: (entry) => {},
-  updated: (entry) => {},
-  removed: (entry) => {},
+  added: ({ relativePath, type ) => {
+    folderContentMap[relativePath] = type
+  },
+  removed: ({ relativePath }) => {
+    delete folderContentMap[relativePath]
+  },
 })
 ```
 
-TODO: write documentation for this method and put link here
-Do not forget to document that on window `removed` will not be called when something is removed
+— see [`registerFolderLifecycle` documentation](./docs/register-folder-lifecycle-doc.md)
 
 ## `registerFileLifecycle` example
 
+`registerFileLifecycle` is meant to be used when you need to do something in sync with a given file content.
+
 ```js
+import { readFileSync } from "fs"
 import { registerFileLifecycle } from "@dmail/filesystem-watch"
 
-registerFileLifecycle("/Users/me/folder/file.js", {
-  added: () => {},
-  updated: () => {},
-  removed: () => {},
+const path = "/Users/me/folder/config.js"
+let currentConfig = null
+registerFileLifecycle(path, {
+  added: () => {
+    currentConfig = JSON.parse(String(readFileSync(path)))
+  },
+  updated: () => {
+    currentConfig = JSON.parse(String(readFileSync(path)))
+  },
+  removed: () => {
+    currentConfig = null
+  },
 })
 ```
 
-TODO: write documentation for this method and put link here
+— see [`registerFileLifecycle` documentation](./docs/register-file-lifecycle-doc.md)
 
 ## Installation
 
 ```console
-npm install @dmail/filesystem-watch@2.3.0
+npm install @dmail/filesystem-watch@2.4.0
 ```
 
 ## Why ?

@@ -1,22 +1,20 @@
-import { statSync, existsSync } from "fs"
+import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 import { createWatcher } from "./createWatcher.js"
 import { watchFileCreation } from "./folder-watching.js"
-import { operatingSystemIsLinux } from "./operatingSystemTypes.js"
-import { statsToType } from "./statsToType.js"
 import { trackRessources } from "./trackRessources.js"
 
 export const registerFileLifecycle = (
   path,
   { added, updated, removed, notifyExistent = false },
 ) => {
-  if (added && typeof added !== "function") {
-    throw new TypeError(`added must be a function, got ${added}`)
+  if (!undefinedOrFunction(added)) {
+    throw new TypeError(`added must be a function or undefined, got ${added}`)
   }
-  if (updated && typeof updated !== "function") {
-    throw new TypeError(`updated must be a function, got ${updated}`)
+  if (!undefinedOrFunction(updated)) {
+    throw new TypeError(`updated must be a function or undefined, got ${updated}`)
   }
-  if (removed && typeof removed !== "function") {
-    throw new TypeError(`removed must be a function, got ${removed}`)
+  if (!undefinedOrFunction(removed)) {
+    throw new TypeError(`removed must be a function or undefined, got ${removed}`)
   }
 
   const tracker = trackRessources()
@@ -34,52 +32,52 @@ export const registerFileLifecycle = (
     const fileMutationStopTracking = tracker.registerCleanupCallback(fileMutationStopWatching)
 
     if (added) {
-      if (existent && !notifyExistent) return
-      added()
+      if (existent) {
+        if (notifyExistent) {
+          added({ existent: true })
+        }
+      } else {
+        added({})
+      }
     }
   }
 
-  try {
-    const stats = statSync(path)
-    const type = statsToType(stats)
-    if (type === "file") {
-      fileExistsCallback({ existent: true })
+  const type = filesystemPathToTypeOrNull(path)
+  if (type === "file") {
+    fileExistsCallback({ existent: true })
+  } else if (type === null) {
+    if (added) {
+      const fileCreationStopWatching = watchFileCreation(path, () => {
+        fileCreationgStopTracking()
+        fileExistsCallback({ existent: false })
+      })
+      const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
     } else {
-      throw new Error(createUnexpectedStatsTypeMessage({ type, path }))
+      throw new Error(createMissingFileMessage({ path }))
     }
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      if (added) {
-        const fileCreationStopWatching = watchFileCreation(path, () => {
-          fileCreationgStopTracking()
-          fileExistsCallback({ existent: false })
-        })
-        const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
-      } else {
-        throw new Error(createMissingFileMessage({ path }))
-      }
-    } else {
-      throw error
-    }
+  } else {
+    throw new Error(createUnexpectedStatsTypeMessage({ type, path }))
   }
 
   return tracker.cleanup
 }
 
+const undefinedOrFunction = (value) => typeof value === "undefined" || typeof value === "function"
+
 const watchFileMutation = (path, { updated, removed }) => {
   let watcher = createWatcher(path, { persistent: false })
 
-  watcher.on("change", (eventType) => {
-    if (eventType === "change") {
-      if (updated) {
-        if (operatingSystemIsLinux() && !existsSync(path)) return
-        updated()
-      }
-    } else if (eventType === "rename") {
+  watcher.on("change", () => {
+    const type = filesystemPathToTypeOrNull(path)
+    if (type === null) {
       watcher.close()
       watcher = undefined
       if (removed) {
         removed()
+      }
+    } else if (type === "file") {
+      if (updated) {
+        updated()
       }
     }
   })
