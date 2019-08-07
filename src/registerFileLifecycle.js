@@ -22,11 +22,12 @@ export const registerFileLifecycle = (
 
   const tracker = trackRessources()
 
-  const fileExistsCallback = ({ existent }) => {
+  const handleFileFound = ({ existent }) => {
     const fileMutationStopWatching = watchFileMutation(path, {
       updated,
       removed: () => {
         fileMutationStopTracking()
+        watchFileAdded()
         if (removed) {
           removed()
         }
@@ -45,16 +46,20 @@ export const registerFileLifecycle = (
     }
   }
 
+  const watchFileAdded = () => {
+    const fileCreationStopWatching = watchFileCreation(path, () => {
+      fileCreationgStopTracking()
+      handleFileFound({ existent: false })
+    })
+    const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
+  }
+
   const type = filesystemPathToTypeOrNull(path)
   if (type === "file") {
-    fileExistsCallback({ existent: true })
+    handleFileFound({ existent: true })
   } else if (type === null) {
     if (added) {
-      const fileCreationStopWatching = watchFileCreation(path, () => {
-        fileCreationgStopTracking()
-        fileExistsCallback({ existent: false })
-      })
-      const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
+      watchFileAdded()
     } else {
       throw new Error(createMissingFileMessage({ path }))
     }

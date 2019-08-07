@@ -4,6 +4,7 @@ import { registerFileLifecycle } from "../../../index.js"
 import {
   cleanFolder,
   createFile,
+  removeFile,
   changeFileModificationDate,
   dateToSecondsPrecision,
   wait,
@@ -11,7 +12,8 @@ import {
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
 const fooPath = `${fixturesFolderPath}/foo.js`
-const modificationDate = dateToSecondsPrecision(new Date(Date.now() + 1000))
+const modificationDateA = dateToSecondsPrecision(new Date(Date.now() + 1001))
+const modificationDateB = dateToSecondsPrecision(new Date(Date.now() + 2002))
 
 await cleanFolder(fixturesFolderPath)
 await createFile(fooPath)
@@ -22,9 +24,15 @@ registerFileLifecycle(fooPath, {
   },
 })
 await wait(200)
-await changeFileModificationDate(fooPath, modificationDate)
+await changeFileModificationDate(fooPath, modificationDateA)
+await wait(200)
+await removeFile(fooPath)
+await wait(200)
+await createFile(fooPath)
+await wait(200)
+await changeFileModificationDate(fooPath, modificationDateB)
 await wait(200)
 
 const actual = mutations
-const expected = [{ type: "updated" }]
+const expected = [{ type: "updated" }, { type: "updated" }]
 assert({ actual, expected })

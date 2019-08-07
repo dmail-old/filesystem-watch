@@ -6,27 +6,35 @@ import {
   dateToSecondsPrecision,
   createFile,
   wait,
+  removeFile,
   changeFileModificationDate,
 } from "../../testHelpers.js"
 
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
 const fooPath = `${fixturesFolderPath}/foo.js`
-const modificationDate = dateToSecondsPrecision(new Date(Date.now() + 1001))
+const modificationDateA = dateToSecondsPrecision(new Date(Date.now() + 1001))
+const modificationDateB = dateToSecondsPrecision(new Date(Date.now() + 2002))
 
 await cleanFolder(fixturesFolderPath)
 await createFile(fooPath)
 const mutations = []
 registerFolderLifecycle(fixturesFolderPath, {
-  added: (data) => {
-    mutations.push({ name: "added", ...data })
-  },
   updated: (data) => {
     mutations.push({ name: "updated", ...data })
   },
 })
-await changeFileModificationDate(fooPath, modificationDate)
+await changeFileModificationDate(fooPath, modificationDateA)
+await wait(200)
+await removeFile(fooPath)
+await wait(200)
+await createFile(fooPath)
+await wait(200)
+await changeFileModificationDate(fooPath, modificationDateB)
 await wait(200)
 
 const actual = mutations
-const expected = [{ name: "updated", relativePath: "/foo.js", type: "file" }]
+const expected = [
+  { name: "updated", relativePath: "/foo.js", type: "file" },
+  { name: "updated", relativePath: "/foo.js", type: "file" },
+]
 assert({ actual, expected })

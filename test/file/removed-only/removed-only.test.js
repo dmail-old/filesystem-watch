@@ -16,7 +16,11 @@ registerFileLifecycle(fooPath, {
 })
 await removeFile(fooPath)
 await wait(200)
+await createFile(fooPath)
+await wait(200)
+await removeFile(fooPath)
+await wait(200)
 
 const actual = mutations
-const expected = [{ type: "removed" }]
+const expected = [{ type: "removed" }, { type: "removed" }]
 assert({ actual, expected })

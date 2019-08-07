@@ -10,9 +10,6 @@ await cleanFolder(fixturesFolderPath)
 await createFile(fooPath)
 const mutations = []
 registerFolderLifecycle(fixturesFolderPath, {
-  added: (data) => {
-    mutations.push({ name: "added", ...data })
-  },
   updated: (data) => {
     mutations.push({ name: "updated", ...data })
   },
@@ -22,7 +19,14 @@ registerFolderLifecycle(fixturesFolderPath, {
 })
 await removeFile(fooPath)
 await wait(200)
+await createFile(fooPath)
+await wait(200)
+await removeFile(fooPath)
+await wait(200)
 
 const actual = mutations
-const expected = [{ name: "removed", relativePath: "/foo.js", type: "file" }]
+const expected = [
+  { name: "removed", relativePath: "/foo.js", type: "file" },
+  { name: "removed", relativePath: "/foo.js", type: "file" },
+]
 assert({ actual, expected })
