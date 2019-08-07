@@ -129,3 +129,21 @@ If you don't pass this option, the default value will be:
 ```js
 true
 ```
+
+## `registerFolderLifecycle` return value
+
+```js
+import { registerFolderLifecycle } from "@dmail/filesystem-watch"
+
+const unregister = registerFolderLifecycle("/Users/you/folder", {
+  added: () => {
+    console.log(`something added`)
+  },
+})
+unregister()
+```
+
+`registerFolderLifecycle` returns a function.<br />
+This function can be used to indicated you're no longer interested in folder lifecycle.<br />
+First call to the function cleans up things required to watch folder changes.<br />
+Subsequent calls to this function are ignored.<br />
