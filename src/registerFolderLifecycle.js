@@ -57,33 +57,38 @@ export const registerFolderLifecycle = (
   const folderPathname = operatingSystemPathToPathname(path)
 
   const handleEvent = ({ dirname, basename, eventType }) => {
-    if (dirname && basename) {
-      handleChange(`/${dirname}/${basename}`)
-    } else if (basename) {
-      handleChange(`/${basename}`)
+    if (basename) {
+      if (dirname) {
+        handleChange(`/${dirname}/${basename}`)
+      } else {
+        handleChange(`/${basename}`)
+      }
     } else if ((removed || added) && eventType === "rename") {
-      // we might receive `rename` event without filename
-      // when a file is removed.
-      // in that case, if we are interested by removals
-      // we check what file was removed
-      // note: it's pretty expensive to do that on large folders
-      // this is to fix windows emitting null on file removal
-      // https://github.com/joyent/libuv/issues/1479
+      // we might receive `rename` without filename
+      // in that case we try to find ourselves which file was removed.
 
-      const relativePathCandidateArray = dirname
-        ? Object.keys(contentMap).filter((relativePath) => {
-            const directoryPath = `/${dirname}`
+      let relativePathCandidateArray = Object.keys(contentMap)
 
-            // entry not inside this directory
-            if (!relativePath.startsWith(directoryPath)) return false
-
-            const afterDirectory = relativePath.slice(directoryPath.length + 1)
-            // deep inside this directory
-            if (afterDirectory.includes("/")) return false
-
+      if (!fsWatchSupportsRecursive) {
+        relativePathCandidateArray = relativePathCandidateArray.filter((relativePath) => {
+          if (!dirname) {
+            // ensure entry is top level
+            if (relativePath.slice(1).includes("/")) return false
             return true
-          })
-        : Object.keys(contentMap)
+          }
+
+          const directoryPath = `/${dirname}`
+
+          // entry not inside this directory
+          if (!relativePath.startsWith(directoryPath)) return false
+
+          const afterDirectory = relativePath.slice(directoryPath.length + 1)
+          // deep inside this directory
+          if (afterDirectory.includes("/")) return false
+
+          return true
+        })
+      }
 
       const removedEntryRelativePath = relativePathCandidateArray.find((relativePathCandidate) => {
         const type = filesystemPathToTypeOrNull(

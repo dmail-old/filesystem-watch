@@ -76,3 +76,24 @@ What I needed was small wrapper around fs.watch that do not shallow events sent 
 
 — see [fs.watch documentation](https://nodejs.org/docs/latest/api/fs.html#fs_fs_watch_filename_options_listener)<br />
 — see [chokidar on github](https://github.com/paulmillr/chokidar)
+
+## fs.watch caveats
+
+Everywhere:
+
+- Writing a file emits a `change` as chunk gets written in the file.
+- Trigger `change` on folder when something inside folder changes
+- might send event with filename being null (never reproduced yet)
+
+On mac:
+
+- Trigger `rename` instead of `change` when updating a file
+
+On linux:
+
+- recursive option not supported
+
+On windows:
+
+- filesystem emits nothing when a file is removed
+- removing a watched folder throw with EPERM error
