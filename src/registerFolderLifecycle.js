@@ -20,6 +20,9 @@ export const registerFolderLifecycle = (
   path,
   { added, updated, removed, watchDescription = { "/**/*": true }, notifyExistent = false },
 ) => {
+  if (typeof path !== "string") {
+    throw new TypeError(`path must be a string, got ${path}`)
+  }
   if (!undefinedOrFunction(added)) {
     throw new TypeError(`added must be a function or undefined, got ${added}`)
   }

@@ -7,6 +7,9 @@ export const registerFileLifecycle = (
   path,
   { added, updated, removed, notifyExistent = false },
 ) => {
+  if (typeof path !== "string") {
+    throw new TypeError(`path must be a string, got ${path}`)
+  }
   if (!undefinedOrFunction(added)) {
     throw new TypeError(`added must be a function or undefined, got ${added}`)
   }
