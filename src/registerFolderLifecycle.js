@@ -18,7 +18,14 @@ import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 const fsWatchSupportsRecursive = !operatingSystemIsLinux()
 export const registerFolderLifecycle = (
   path,
-  { added, updated, removed, watchDescription = { "/**/*": true }, notifyExistent = false },
+  {
+    added,
+    updated,
+    removed,
+    watchDescription = { "/**/*": true },
+    notifyExistent = false,
+    keepProcessAlive = true,
+  },
 ) => {
   if (typeof path !== "string") {
     throw new TypeError(`path must be a string, got ${path}`)
@@ -190,7 +197,7 @@ export const registerFolderLifecycle = (
     // we must watch manually every directory we find
     if (!fsWatchSupportsRecursive && type === "directory") {
       const entryPath = pathnameToOperatingSystemPath(entryPathname)
-      const watcher = createWatcher(entryPath, { persistent: false })
+      const watcher = createWatcher(entryPath, { persistent: keepProcessAlive })
       tracker.registerCleanupCallback(() => {
         watcher.close()
       })
@@ -220,7 +227,7 @@ export const registerFolderLifecycle = (
 
   const watcher = createWatcher(path, {
     recursive: fsWatchSupportsRecursive,
-    persistent: false,
+    persistent: keepProcessAlive,
   })
   tracker.registerCleanupCallback(() => {
     watcher.close()

@@ -2,9 +2,9 @@ import { dirname, basename } from "path"
 import { createWatcher } from "./createWatcher.js"
 import { filesystemPathToTypeOrNull } from "./filesystemPathToTypeOrNull.js"
 
-export const watchFileCreation = (path, callback) => {
+export const watchFileCreation = (path, callback, keepProcessAlive) => {
   const parentPath = dirname(path)
-  let parentWatcher = createWatcher(parentPath, { persistent: false })
+  let parentWatcher = createWatcher(parentPath, { persistent: keepProcessAlive })
   parentWatcher.on("change", (eventType, filename) => {
     if (filename && filename !== basename(path)) return
 

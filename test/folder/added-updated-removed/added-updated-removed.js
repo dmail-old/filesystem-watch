@@ -26,6 +26,7 @@ registerFolderLifecycle(fixturesFolderPath, {
   removed: (data) => {
     mutations.push({ name: "removed", ...data })
   },
+  keepProcessAlive: false,
 })
 await createFile(fooPath)
 await wait(200)

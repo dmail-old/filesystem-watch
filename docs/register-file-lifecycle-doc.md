@@ -2,10 +2,6 @@
 
 Document `registerFileLifecycle` function.<br />
 
-## fs.watch on file caveats
-
-TODO
-
 ## `registerFileLifecycle` options
 
 ### added, updated, removed
@@ -13,8 +9,7 @@ TODO
 ```js
 import { registerFileLifecycle } from "@dmail/filesystem-watch"
 
-const path = `/Users/you/folder/file.js`
-registerFileLifecycle(path, {
+registerFileLifecycle("/Users/you/folder/file.js", {
   added: () => {
     console.log(`file added`)
   },
@@ -41,8 +36,7 @@ Prefer `undefined` over an empty function so that we know you're not interested 
 ```js
 import { registerFileLifecycle } from "@dmail/filesystem-watch"
 
-const path = `/Users/you/folder/file.js`
-registerFileLifecycle(path, {
+registerFileLifecycle("/Users/you/folder/file.js", {
   notifyExistent: true,
   added: ({ existent }) => {
     if (existent) {
@@ -60,4 +54,26 @@ If you don't pass this option, the default value will be:
 
 ```js
 false
+```
+
+### keepProcessAlive
+
+```js
+import { registerFileLifecycle } from "@dmail/filesystem-watch"
+
+registerFileLifecycle("/Users/you/folder/file.js", {
+  keepProcessAlive: false,
+  added: () => {
+    console.log(`file added`)
+  },
+})
+```
+
+`keepProcessAlive` controls if watching file keeps node process alive or not.<br />
+If you pass false node process exits if nothing else keeps it alive like a timeout or server instance.<br />
+
+If you don't pass this option, the default value will be:
+
+```js
+true
 ```

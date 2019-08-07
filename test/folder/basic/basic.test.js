@@ -6,6 +6,6 @@ import { cleanFolder } from "../../testHelpers.js"
 const fixturesFolderPath = `${importMetaURLToFolderPath(import.meta.url)}/fixtures`
 
 await cleanFolder(fixturesFolderPath)
-const actual = typeof registerFolderLifecycle(fixturesFolderPath, {})
+const actual = typeof registerFolderLifecycle(fixturesFolderPath, { keepProcessAlive: false })
 const expected = "function"
 assert({ actual, expected })

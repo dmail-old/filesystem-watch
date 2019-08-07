@@ -22,6 +22,7 @@ registerFileLifecycle(fooPath, {
   updated: (data) => {
     mutations.push({ type: "updated", ...data })
   },
+  keepProcessAlive: false,
 })
 await wait(200)
 await changeFileModificationDate(fooPath, modificationDateA)

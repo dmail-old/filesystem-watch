@@ -12,6 +12,7 @@ registerFileLifecycle(fooPath, {
   added: () => {
     mutations.push({ type: "added" })
   },
+  keepProcessAlive: false,
 })
 await createFile(fooPath)
 await wait(200)

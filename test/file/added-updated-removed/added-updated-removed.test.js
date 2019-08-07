@@ -26,6 +26,7 @@ registerFileLifecycle(fooPath, {
   removed: () => {
     mutations.push({ type: "removed" })
   },
+  keepProcessAlive: false,
 })
 await createFile(fooPath)
 await wait(200)

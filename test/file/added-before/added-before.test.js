@@ -19,6 +19,7 @@ registerFileLifecycle(fooPath, {
   removed: () => {
     mutations.push({ type: "removed" })
   },
+  keepProcessAlive: false,
 })
 
 const actual = mutations

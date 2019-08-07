@@ -5,7 +5,7 @@ import { trackRessources } from "./trackRessources.js"
 
 export const registerFileLifecycle = (
   path,
-  { added, updated, removed, notifyExistent = false },
+  { added, updated, removed, notifyExistent = false, keepProcessAlive = true },
 ) => {
   if (typeof path !== "string") {
     throw new TypeError(`path must be a string, got ${path}`)
@@ -32,6 +32,7 @@ export const registerFileLifecycle = (
           removed()
         }
       },
+      keepProcessAlive,
     })
     const fileMutationStopTracking = tracker.registerCleanupCallback(fileMutationStopWatching)
 
@@ -47,10 +48,14 @@ export const registerFileLifecycle = (
   }
 
   const watchFileAdded = () => {
-    const fileCreationStopWatching = watchFileCreation(path, () => {
-      fileCreationgStopTracking()
-      handleFileFound({ existent: false })
-    })
+    const fileCreationStopWatching = watchFileCreation(
+      path,
+      () => {
+        fileCreationgStopTracking()
+        handleFileFound({ existent: false })
+      },
+      keepProcessAlive,
+    )
     const fileCreationgStopTracking = tracker.registerCleanupCallback(fileCreationStopWatching)
   }
 
@@ -72,8 +77,8 @@ export const registerFileLifecycle = (
 
 const undefinedOrFunction = (value) => typeof value === "undefined" || typeof value === "function"
 
-const watchFileMutation = (path, { updated, removed }) => {
-  let watcher = createWatcher(path, { persistent: false })
+const watchFileMutation = (path, { updated, removed, keepProcessAlive }) => {
+  let watcher = createWatcher(path, { persistent: keepProcessAlive })
 
   watcher.on("change", () => {
     const type = filesystemPathToTypeOrNull(path)

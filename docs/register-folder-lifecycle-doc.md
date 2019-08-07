@@ -107,3 +107,25 @@ If you don't pass this option, the default value will be:
 ```js
 false
 ```
+
+### keepProcessAlive
+
+```js
+import { registerFolderLifecycle } from "@dmail/filesystem-watch"
+
+registerFolderLifecycle("/Users/you/folder", {
+  keepProcessAlive: false,
+  added: () => {
+    console.log("something added")
+  },
+})
+```
+
+`keepProcessAlive` controls if watching folder keeps node process alive or not.<br />
+If you pass false node process exits if nothing else keeps it alive like a timeout or server instance.<br />
+
+If you don't pass this option, the default value will be:
+
+```js
+true
+```

@@ -15,6 +15,7 @@ registerFolderLifecycle(fixturesFolderPath, {
   updated: (data) => {
     mutations.push({ name: "updated", ...data })
   },
+  keepProcessAlive: false,
 })
 await createFolder(`${fixturesFolderPath}/folder`)
 await wait(200)
