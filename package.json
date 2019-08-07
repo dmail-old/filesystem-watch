@@ -29,7 +29,7 @@
 		"@jsenv/node-module-import-map": "3.0.0",
 		"@jsenv/eslint-config": "8.0.0",
 		"@jsenv/prettier-config": "1.0.0",
-		"@jsenv/prettier-check-project": "2.9.0",
+		"@jsenv/prettier-check-project": "3.1.0",
 		"@jsenv/eslint-import-resolver": "4.7.0",
 		"@jsenv/codecov-upload": "1.6.0",
 		"@jsenv/module-resolution": "3.0.0",
