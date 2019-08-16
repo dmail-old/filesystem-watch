@@ -1,57 +1,57 @@
 {
-	"name": "@dmail/filesystem-watch",
-	"version": "2.5.0",
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/dmail/filesystem-watch"
-	},
-	"publishConfig": {
-		"access": "public"
-	},
-	"main": "dist/commonjs/main.js",
-	"module": "index.js",
-	"files": [
-		"/dist/",
-		"/src/",
-		"/index.js"
-	],
-	"scripts": {
-		"test": "node ./script/test/test.js",
-		"eslint-check": "eslint .",
-		"prettier-check": "node ./script/prettier-check/prettier-check.js",
-		"generate-coverage": "node ./script/generate-coverage/generate-coverage.js",
-		"upload-coverage": "node ./script/upload-coverage/upload-coverage.js",
-		"generate-commonjs-bundle": "node ./script/generate-commonjs-bundle/generate-commonjs-bundle.js",
-		"generate-import-map": "node ./script/generate-import-map/generate-import-map.js",
-		"dist": "npm run clean && npm run generate-commonjs-bundle",
-		"clean": "rimraf dist && rimraf coverage",
+  "name": "@dmail/filesystem-watch",
+  "version": "2.6.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dmail/filesystem-watch"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/commonjs/main.js",
+  "module": "index.js",
+  "files": [
+    "/dist/",
+    "/src/",
+    "/index.js"
+  ],
+  "scripts": {
+    "test": "node ./script/test/test.js",
+    "eslint-check": "eslint .",
+    "prettier-check": "node ./script/prettier-check/prettier-check.js",
+    "generate-coverage": "node ./script/generate-coverage/generate-coverage.js",
+    "upload-coverage": "node ./script/upload-coverage/upload-coverage.js",
+    "generate-commonjs-bundle": "node ./script/generate-commonjs-bundle/generate-commonjs-bundle.js",
+    "generate-import-map": "node ./script/generate-import-map/generate-import-map.js",
+    "dist": "npm run clean && npm run generate-commonjs-bundle",
+    "clean": "rimraf dist && rimraf coverage",
 		"reinstall": "npm run clean && rimraf node_modules && npm install",
 		"postinstall": "npm run generate-import-map",
-		"prepublishOnly": "node ./script/transform-package/remove-postinstall.js && npm run dist",
-		"postpublish": "node ./script/transform-package/restore-postinstall.js"
-	},
-	"dependencies": {
-		"@jsenv/operating-system-path": "2.2.0",
-		"@dmail/project-structure": "5.0.0",
-		"@dmail/cancellation": "2.5.0"
-	},
-	"devDependencies": {
-		"@jsenv/core": "5.129.0",
-		"@jsenv/bundling": "1.13.0",
-		"@jsenv/testing": "1.23.0",
-		"@jsenv/node-launcher": "1.14.0",
-		"@jsenv/node-module-import-map": "3.2.0",
-		"@jsenv/eslint-config": "9.7.0",
-		"@jsenv/prettier-config": "1.0.0",
-		"@jsenv/prettier-check-project": "3.2.0",
-		"@jsenv/codecov-upload": "1.6.0",
-		"@jsenv/module-resolution": "3.3.0",
-		"@dmail/assert": "3.13.0",
-		"@dmail/helper": "2.2.0",
-		"babel-eslint": "11.0.0-beta.0",
-		"eslint": "5.1.0",
-		"prettier": "1.18.2",
-		"rimraf": "2.6.2"
-	}
+    "prepublishOnly": "node ./script/transform-package/remove-postinstall.js && npm run dist",
+    "postpublish": "node ./script/transform-package/restore-postinstall.js"
+  },
+  "dependencies": {
+    "@jsenv/operating-system-path": "2.2.0",
+    "@dmail/project-structure": "5.0.0",
+    "@dmail/cancellation": "2.5.0"
+  },
+  "devDependencies": {
+    "@jsenv/core": "5.129.0",
+    "@jsenv/bundling": "1.13.0",
+    "@jsenv/testing": "1.23.0",
+    "@jsenv/node-launcher": "1.14.0",
+    "@jsenv/node-module-import-map": "3.2.0",
+    "@jsenv/eslint-config": "9.7.0",
+    "@jsenv/prettier-config": "1.0.0",
+    "@jsenv/prettier-check-project": "3.2.0",
+    "@jsenv/codecov-upload": "1.6.0",
+    "@jsenv/module-resolution": "3.3.0",
+    "@dmail/assert": "3.13.0",
+    "@dmail/helper": "2.2.0",
+    "babel-eslint": "11.0.0-beta.0",
+    "eslint": "5.1.0",
+    "prettier": "1.18.2",
+    "rimraf": "2.6.2"
+  }
 }
