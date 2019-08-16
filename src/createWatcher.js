@@ -19,9 +19,9 @@ const fixPermissionIssueIfWindows = (watcher, path) => {
         try {
           const fd = await openAsync(path, "r")
           await closeAsync(fd)
+          console.error(error)
         } catch (error) {}
       }
-      throw error
     })
   }
 }
