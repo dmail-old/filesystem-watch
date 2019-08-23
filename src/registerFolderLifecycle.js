@@ -5,10 +5,11 @@ import {
   pathnameToOperatingSystemPath,
 } from "@jsenv/operating-system-path"
 import {
-  namedValueDescriptionToMetaDescription,
-  pathnameCanContainsMetaMatching,
-  pathnameToMeta,
-} from "@dmail/project-structure"
+  namedMetaToMetaMap,
+  resolveMetaMapPatterns,
+  urlCanContainsMetaMatching,
+  urlToMeta,
+} from "@jsenv/url-meta"
 import { operatingSystemIsLinux } from "./operatingSystemTypes.js"
 import { createWatcher } from "./createWatcher.js"
 import { trackRessources } from "./trackRessources.js"
@@ -40,22 +41,27 @@ export const registerFolderLifecycle = (
     throw new TypeError(`removed must be a function or undefined, got ${removed}`)
   }
 
-  const metaDescription = namedValueDescriptionToMetaDescription({
-    watch: watchDescription,
-  })
+  const folderPathname = operatingSystemPathToPathname(path)
+
+  const metaMap = resolveMetaMapPatterns(
+    namedMetaToMetaMap({
+      watch: watchDescription,
+    }),
+    `file://${folderPathname}`,
+  )
   const entryShouldBeWatched = ({ relativePath, type }) => {
     if (type === "directory") {
-      const canContainEntryToWatch = pathnameCanContainsMetaMatching({
-        pathname: relativePath,
-        metaDescription,
+      const canContainEntryToWatch = urlCanContainsMetaMatching({
+        url: `file://${folderPathname}${relativePath}`,
+        metaMap,
         predicate: ({ watch }) => watch,
       })
       return canContainEntryToWatch
     }
 
-    const entryMeta = pathnameToMeta({
-      pathname: relativePath,
-      metaDescription,
+    const entryMeta = urlToMeta({
+      url: `file://${folderPathname}${relativePath}`,
+      metaMap,
     })
 
     return entryMeta.watch
@@ -64,7 +70,6 @@ export const registerFolderLifecycle = (
   const tracker = trackRessources()
 
   const contentMap = {}
-  const folderPathname = operatingSystemPathToPathname(path)
 
   const handleEvent = ({ dirname, basename, eventType }) => {
     if (basename) {

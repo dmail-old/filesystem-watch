@@ -1,6 +1,6 @@
 {
   "name": "@dmail/filesystem-watch",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -26,32 +26,32 @@
     "generate-import-map": "node ./script/generate-import-map/generate-import-map.js",
     "dist": "npm run clean && npm run generate-commonjs-bundle",
     "clean": "rimraf dist && rimraf coverage",
-		"reinstall": "npm run clean && rimraf node_modules && npm install",
-		"postinstall": "npm run generate-import-map",
+    "postinstall": "npm run generate-import-map",
+    "reinstall": "npm run clean && rimraf node_modules && npm install",
     "prepublishOnly": "node ./script/transform-package/remove-postinstall.js && npm run dist",
     "postpublish": "node ./script/transform-package/restore-postinstall.js"
   },
   "dependencies": {
-    "@jsenv/operating-system-path": "2.2.0",
-    "@dmail/project-structure": "5.0.0",
-    "@dmail/cancellation": "2.5.0"
+    "@jsenv/operating-system-path": "2.3.0",
+    "@jsenv/url-meta": "1.1.0",
+    "@dmail/cancellation": "2.6.0"
   },
   "devDependencies": {
-    "@jsenv/core": "5.129.0",
-    "@jsenv/bundling": "1.13.0",
-    "@jsenv/testing": "1.23.0",
-    "@jsenv/node-launcher": "1.14.0",
+    "@jsenv/testing": "1.27.0",
+    "@jsenv/bundling": "1.15.0",
+    "@jsenv/node-launcher": "1.19.0",
+    "@jsenv/chromium-launcher": "2.3.0",
+    "@jsenv/codecov-upload": "1.7.0",
+    "@jsenv/eslint-config": "9.9.0",
+    "@jsenv/babel-plugin-map": "1.1.0",
     "@jsenv/node-module-import-map": "3.2.0",
-    "@jsenv/eslint-config": "9.7.0",
+    "@jsenv/prettier-check-project": "3.3.0",
     "@jsenv/prettier-config": "1.0.0",
-    "@jsenv/prettier-check-project": "3.2.0",
-    "@jsenv/codecov-upload": "1.6.0",
-    "@jsenv/module-resolution": "3.3.0",
-    "@dmail/assert": "3.13.0",
-    "@dmail/helper": "2.2.0",
-    "babel-eslint": "11.0.0-beta.0",
-    "eslint": "5.1.0",
+    "@dmail/assert": "3.14.0",
+    "@dmail/helper": "2.3.0",
+    "eslint": "6.2.1",
+    "react": "16.9.0",
     "prettier": "1.18.2",
-    "rimraf": "2.6.2"
+    "rimraf": "3.0.0"
   }
 }
