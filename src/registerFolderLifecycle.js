@@ -5,8 +5,8 @@ import {
   pathnameToOperatingSystemPath,
 } from "@jsenv/operating-system-path"
 import {
-  namedMetaToMetaMap,
-  resolveMetaMapPatterns,
+  metaMapToSpecifierMetaMap,
+  normalizeSpecifierMetaMap,
   urlCanContainsMetaMatching,
   urlToMeta,
 } from "@jsenv/url-meta"
@@ -43,17 +43,18 @@ export const registerFolderLifecycle = (
 
   const folderPathname = operatingSystemPathToPathname(path)
 
-  const metaMap = resolveMetaMapPatterns(
-    namedMetaToMetaMap({
+  const specifierMetaMap = normalizeSpecifierMetaMap(
+    metaMapToSpecifierMetaMap({
       watch: watchDescription,
     }),
     `file://${folderPathname}`,
+    { forceHttpResolutionForFile: true },
   )
   const entryShouldBeWatched = ({ relativePath, type }) => {
     if (type === "directory") {
       const canContainEntryToWatch = urlCanContainsMetaMatching({
         url: `file://${folderPathname}${relativePath}`,
-        metaMap,
+        specifierMetaMap,
         predicate: ({ watch }) => watch,
       })
       return canContainEntryToWatch
@@ -61,7 +62,7 @@ export const registerFolderLifecycle = (
 
     const entryMeta = urlToMeta({
       url: `file://${folderPathname}${relativePath}`,
-      metaMap,
+      specifierMetaMap,
     })
 
     return entryMeta.watch
