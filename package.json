@@ -1,6 +1,6 @@
 {
   "name": "@dmail/filesystem-watch",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -32,24 +32,24 @@
     "postpublish": "node ./script/transform-package/restore-postinstall.js"
   },
   "dependencies": {
-    "@jsenv/operating-system-path": "2.3.0",
-    "@jsenv/url-meta": "1.1.0",
+    "@jsenv/operating-system-path": "2.5.0",
+    "@jsenv/url-meta": "3.0.0",
     "@dmail/cancellation": "2.6.0"
   },
   "devDependencies": {
-    "@jsenv/testing": "1.27.0",
-    "@jsenv/bundling": "1.15.0",
-    "@jsenv/node-launcher": "1.19.0",
-    "@jsenv/chromium-launcher": "2.3.0",
-    "@jsenv/codecov-upload": "1.7.0",
-    "@jsenv/eslint-config": "9.9.0",
-    "@jsenv/babel-plugin-map": "1.1.0",
-    "@jsenv/node-module-import-map": "3.2.0",
-    "@jsenv/prettier-check-project": "3.3.0",
-    "@jsenv/prettier-config": "1.0.0",
     "@dmail/assert": "3.14.0",
     "@dmail/helper": "2.3.0",
-    "eslint": "6.2.1",
+    "@jsenv/testing": "3.4.0",
+    "@jsenv/bundling": "6.2.0",
+    "@jsenv/node-launcher": "4.17.0",
+    "@jsenv/chromium-launcher": "3.8.0",
+    "@jsenv/codecov-upload": "1.9.0",
+    "@jsenv/eslint-config": "10.1.0",
+    "@jsenv/babel-plugin-map": "3.1.0",
+    "@jsenv/node-module-import-map": "7.1.0",
+    "@jsenv/prettier-check-project": "3.5.0",
+    "@jsenv/prettier-config": "1.0.0",
+    "eslint": "6.4.0",
     "react": "16.9.0",
     "prettier": "1.18.2",
     "rimraf": "3.0.0"

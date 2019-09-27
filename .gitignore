@@ -4,7 +4,8 @@
 /dist/
 /node_modules/
 /test/**/fixtures/
-/env.json
 /importMap.json
 /jsconfig.json
+/secrets.json
 /package-lock.json
+/yarn.lock
